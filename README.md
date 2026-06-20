@@ -61,22 +61,19 @@ Grab **`Cel-apple-silicon.zip`** (~995 MB) from the release page. No Python, Nod
 
 ### Install (first time)
 
-1. Download **`Cel-apple-silicon.zip`** (~690 MB) from the [release page](https://github.com/MRJOHN5ON/cel/releases/latest)
+1. Download **`Cel-apple-silicon.zip`** (~995 MB) from the [release page](https://github.com/MRJOHN5ON/cel/releases/latest)
 2. **Double-click the zip** to unzip — wait until you see **`Cel.app`** in Downloads (don't run it from inside the zip)
-3. **First launch — do not double-click.** Instead:
-   - **Right-click** (or Control-click) **`Cel.app`**
-   - Choose **Open** from the menu
-   - Click **Open** again in the dialog
+3. **First launch — do not double-click.** Instead, paste this in **Terminal** (change the path if `Cel.app` isn't in Downloads):
 
-After that one-time approval, double-click works normally. Drag to **Applications** whenever you like.
+```bash
+chmod -R u+w ~/Downloads/Cel.app && xattr -cr ~/Downloads/Cel.app && open ~/Downloads/Cel.app
+```
 
-> **Got “modified” / “damaged” / “code does not match”?** macOS blocks unsigned apps downloaded from the web. The button in **System Settings → Privacy & Security** often **does not appear** — that's normal. Use **right-click → Open** above, or run this in **Terminal** (change the path if `Cel.app` isn't in Downloads):
->
-> ```bash
-> xattr -cr ~/Downloads/Cel.app
-> ```
->
-> Then **right-click `Cel.app` → Open → Open** again.
+4. If macOS asks, click **Open**
+
+After that one-time step, double-click works normally. Drag to **Applications** whenever you like.
+
+> **xattr “Permission denied” on libtcl/libtk?** Harmless noise from read-only Python files — the `chmod` line above fixes that. Ignore those two lines if you already ran the full command.
 
 > **Intel Mac?** Current releases are Apple Silicon only. An Intel build would need to be compiled on an Intel Mac.
 
@@ -103,7 +100,8 @@ After that one-time approval, double-click works normally. Drag to **Application
 
 | Problem | Fix |
 |---------|-----|
-| "App is damaged" / "modified" / won't open | Don't use System Settings — use **right-click → Open**, or run `xattr -cr /path/to/Cel.app` in Terminal first |
+| "App is damaged" / "modified" / won't open | `chmod -R u+w /path/to/Cel.app && xattr -cr /path/to/Cel.app` then open again |
+| xattr "Permission denied" on libtcl/libtk | Normal — run the `chmod` part first (see Install above) |
 | No "Open Anyway" in Privacy & Security | Normal for unsigned apps — that button often never shows; right-click → Open instead |
 | App bounces in Dock and quits | Wrong chip type — you need Apple Silicon. Check `~/Library/Logs/Cel/cel.log` |
 | Slow first removal | Normal — the model loads into memory (~5–10 s) |
