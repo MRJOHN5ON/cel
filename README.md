@@ -14,11 +14,11 @@
   <img src="https://img.shields.io/badge/built%20with-Python%20%2B%20React-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python + React" />
   <img src="https://img.shields.io/badge/powered%20by-rembg-7C3AED?style=flat-square" alt="rembg" />
   <img src="https://img.shields.io/badge/privacy-local--only-28D7FF?style=flat-square" alt="Local only" />
-  <img src="https://img.shields.io/badge/latest-v1.0.1-8B9BB0?style=flat-square" alt="v1.0.1" />
+  <img src="https://img.shields.io/badge/latest-v1.0.2-8B9BB0?style=flat-square" alt="v1.0.2" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/MRJOHN5ON/cel/releases/tag/v1.0.1"><strong>Download v1.0.1</strong></a>
+  <a href="https://github.com/MRJOHN5ON/cel/releases/tag/v1.0.2"><strong>Download v1.0.2</strong></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/MRJOHN5ON/cel/releases">All releases</a>
 </p>

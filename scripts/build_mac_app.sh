@@ -72,6 +72,11 @@ BUNDLE_PYTHON="$FRAMEWORK_DST/Versions/3.10/bin/python3.10"
 "$RESOURCES/venv/bin/pip" install -q -r backend/requirements.txt
 "$RESOURCES/venv/bin/pip" install -q -r packaging/requirements.txt
 
+echo ""
+echo "→ Relocating bundled Python.framework..."
+chmod +x scripts/relocate_python_framework.sh
+scripts/relocate_python_framework.sh "$APP_BUNDLE"
+
 # ── 5. Launcher executable ───────────────────────────────────────────────────
 cp "$STUB_BIN" "$MACOS/Cel"
 chmod +x "$MACOS/Cel"

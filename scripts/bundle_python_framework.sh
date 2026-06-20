@@ -20,4 +20,4 @@ rm -rf "$FRAMEWORK_DST"
 ditto "$FRAMEWORK_SRC" "$FRAMEWORK_DST"
 # python.org ships some libs owner-readonly; users need write to clear quarantine with xattr
 chmod -R u+w "$FRAMEWORK_DST"
-echo "✓ Python.framework bundled (launcher sets DYLD_FRAMEWORK_PATH at runtime)"
+echo "✓ Python.framework bundled"

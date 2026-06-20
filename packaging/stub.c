@@ -69,6 +69,7 @@ int main(int argc, char *argv[]) {
     char resources[PATH_MAX];
     char python[PATH_MAX];
     char launcher[PATH_MAX];
+    char pythonpath[PATH_MAX * 2];
     char logdir[PATH_MAX];
     char logpath[PATH_MAX];
     const char *home;
@@ -86,14 +87,23 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    snprintf(python, sizeof(python), "%s/venv/bin/python", resources);
+    snprintf(
+        python,
+        sizeof(python),
+        "%s/Contents/Frameworks/Python.framework/Versions/3.10/bin/python3.10",
+        app_bundle
+    );
     snprintf(launcher, sizeof(launcher), "%s/launcher.py", resources);
-
-    char frameworks[PATH_MAX];
-    snprintf(frameworks, sizeof(frameworks), "%s/Contents/Frameworks", app_bundle);
+    snprintf(
+        pythonpath,
+        sizeof(pythonpath),
+        "%s/venv/lib/python3.10/site-packages:%s/venv/lib/python3.10",
+        resources,
+        resources
+    );
 
     if (access(python, X_OK) != 0) {
-        log_start_failure("python runtime missing in app bundle");
+        log_start_failure("bundled python runtime missing in app bundle");
         return 1;
     }
     if (access(launcher, R_OK) != 0) {
@@ -102,9 +112,8 @@ int main(int argc, char *argv[]) {
     }
 
     setenv("PYTHONUNBUFFERED", "1", 1);
+    setenv("PYTHONPATH", pythonpath, 1);
     setenv("CEL_APP_BUNDLE", app_bundle, 1);
-    /* Bundled venv still links to Python.framework — load ours from the app. */
-    setenv("DYLD_FRAMEWORK_PATH", frameworks, 1);
 
     home = getenv("HOME");
     if (!home) {
