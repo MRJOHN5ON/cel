@@ -28,6 +28,10 @@ MODELS: dict[str, dict[str, str]] = {
         "name": "U2Net Human",
         "description": "Optimized for human portraits",
     },
+    "bria-rmbg": {
+        "name": "BRIA RMBG 2.0",
+        "description": "Highest quality — slower, ~1 GB model (non-commercial license)",
+    },
 }
 
 DEFAULT_MODEL = "isnet-general-use"

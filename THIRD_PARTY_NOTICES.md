@@ -36,8 +36,16 @@ Copyright (c) 2020-present Daniel Gatis
 - **License:** Apache License 2.0
 - **Use in Cel:** Optional portrait-optimized segmentation model
 
-Model weights are distributed via the rembg project. Cel does not
-use models with non-commercial restrictions (e.g. Bria RMBG).
+### BRIA RMBG 2.0 (`bria-rmbg`)
+
+- **Project:** [briaai/RMBG-2.0](https://huggingface.co/briaai/RMBG-2.0)
+- **Authors:** BRIA AI
+- **License:** BRIA model license — **non-commercial use only**
+- **Use in Cel:** Optional high-quality segmentation model (~1 GB)
+
+Commercial use requires a separate license from [BRIA AI](https://bria.ai/contact-us).
+
+Model weights are distributed via the rembg project.
 
 ## Backend (Python)
 

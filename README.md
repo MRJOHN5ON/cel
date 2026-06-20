@@ -92,7 +92,7 @@ chmod +x scripts/build_mac_app.sh
 ./scripts/build_mac_app.sh
 ```
 
-Output: `dist/Cel.app` — native window, bundled Python + UI + all 3 models (~2 GB).
+Output: `dist/Cel.app` — native window, bundled Python + UI + all models (~3 GB with BRIA).
 
 - Built for the chip type of the machine you build on (`arm64` = Apple Silicon)
 - Requires [python.org](https://www.python.org/downloads/macos/) Python 3.10 installed on the build machine
@@ -126,7 +126,7 @@ Logs: `~/Library/Logs/Cel/cel.log`
 
 | Option | Default | Notes |
 |--------|---------|-------|
-| Model | `isnet-general-use` | Also: `u2net`, `u2net_human_seg` |
+| Model | `isnet-general-use` | Also: `u2net`, `u2net_human_seg`, `bria-rmbg` (~1 GB, non-commercial) |
 | Alpha matting | On | Auto-skipped above ~2.5 MP unless forced |
 | Force alpha matting | Off | Can take many minutes on large images |
 

@@ -16,12 +16,14 @@ MODELS = {
     "isnet-general-use.onnx": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx",
     "u2net.onnx": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx",
     "u2net_human_seg.onnx": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx",
+    "bria-rmbg.onnx": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/bria-rmbg-2.0.onnx",
 }
 
 MIN_BYTES = {
     "isnet-general-use.onnx": 150_000_000,
     "u2net.onnx": 150_000_000,
     "u2net_human_seg.onnx": 150_000_000,
+    "bria-rmbg.onnx": 900_000_000,
 }
 
 
