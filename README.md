@@ -61,12 +61,22 @@ Grab **`Cel-apple-silicon.zip`** (~690 MB) from the release page. No Python, Nod
 
 ### Install (first time)
 
-1. Download **`Cel-apple-silicon.zip`** from the release page
-2. Double-click the zip to unzip
-3. **Right-click `Cel.app` → Open → Open** — required once because the app is unsigned
-4. Drag to **Applications** if you want
+1. Download **`Cel-apple-silicon.zip`** (~690 MB) from the [release page](https://github.com/MRJOHN5ON/cel/releases/latest)
+2. **Double-click the zip** to unzip — wait until you see **`Cel.app`** in Downloads (don't run it from inside the zip)
+3. **First launch — do not double-click.** Instead:
+   - **Right-click** (or Control-click) **`Cel.app`**
+   - Choose **Open** from the menu
+   - Click **Open** again in the dialog
 
-After the first launch, double-click works normally.
+After that one-time approval, double-click works normally. Drag to **Applications** whenever you like.
+
+> **Got “modified” / “damaged” / “code does not match”?** macOS blocks unsigned apps downloaded from the web. The button in **System Settings → Privacy & Security** often **does not appear** — that's normal. Use **right-click → Open** above, or run this in **Terminal** (change the path if `Cel.app` isn't in Downloads):
+>
+> ```bash
+> xattr -cr ~/Downloads/Cel.app
+> ```
+>
+> Then **right-click `Cel.app` → Open → Open** again.
 
 > **Intel Mac?** Current releases are Apple Silicon only. An Intel build would need to be compiled on an Intel Mac.
 
@@ -93,7 +103,8 @@ After the first launch, double-click works normally.
 
 | Problem | Fix |
 |---------|-----|
-| "App is damaged" or won't open | Right-click → **Open** (don't double-click the first time) |
+| "App is damaged" / "modified" / won't open | Don't use System Settings — use **right-click → Open**, or run `xattr -cr /path/to/Cel.app` in Terminal first |
+| No "Open Anyway" in Privacy & Security | Normal for unsigned apps — that button often never shows; right-click → Open instead |
 | App bounces in Dock and quits | Wrong chip type — you need Apple Silicon. Check `~/Library/Logs/Cel/cel.log` |
 | Slow first removal | Normal — the model loads into memory (~5–10 s) |
 | Processing stuck on a large image | Alpha matting may be running — cancel and retry without force, or wait |

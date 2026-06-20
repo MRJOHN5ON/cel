@@ -78,6 +78,13 @@ if command -v xattr >/dev/null 2>&1; then
   xattr -cr "$APP_BUNDLE" 2>/dev/null || true
 fi
 
+# Ad-hoc sign so Gatekeeper is less hostile (still not notarized)
+if command -v codesign >/dev/null 2>&1; then
+  echo ""
+  echo "→ Ad-hoc signing app bundle..."
+  codesign --force --deep --sign - "$APP_BUNDLE" 2>/dev/null || true
+fi
+
 # ── 6. Size report ───────────────────────────────────────────────────────────
 APP_SIZE="$(du -sh "$APP_BUNDLE" | cut -f1)"
 MODEL_COUNT="$(ls -1 "$RESOURCES/models"/*.onnx 2>/dev/null | wc -l | tr -d ' ')"
