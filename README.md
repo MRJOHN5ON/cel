@@ -14,13 +14,7 @@
   <img src="https://img.shields.io/badge/built%20with-Python%20%2B%20React-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python + React" />
   <img src="https://img.shields.io/badge/powered%20by-rembg-7C3AED?style=flat-square" alt="rembg" />
   <img src="https://img.shields.io/badge/privacy-local--only-28D7FF?style=flat-square" alt="Local only" />
-  <img src="https://img.shields.io/badge/latest-v1.0.2-8B9BB0?style=flat-square" alt="v1.0.2" />
-</p>
-
-<p align="center">
-  <a href="https://github.com/MRJOHN5ON/cel/releases/tag/v1.0.2"><strong>Download v1.0.2</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/MRJOHN5ON/cel/releases">All releases</a>
+  <img src="https://img.shields.io/badge/distribution-build%20yourself-8B9BB0?style=flat-square" alt="Build yourself" />
 </p>
 
 ---
@@ -30,6 +24,8 @@
 Cel removes backgrounds from photos **entirely on your Mac** — no cloud APIs, no credits, no subscription. Drag in a portrait, product shot, or batch of images and save full-resolution transparent PNGs.
 
 Named after the animation **cel** — a transparent layer with your subject on it. Powered by [rembg](https://github.com/danielgatis/rembg) running locally.
+
+**No pre-built downloads.** Clone the repo and run from source or build `Cel.app` yourself on your Mac. Public releases may come later once the app is signed and notarized.
 
 ## Examples
 
@@ -49,33 +45,24 @@ Named after the animation **cel** — a transparent layer with your subject on i
   <img src="docs/screenshots/home-dark.png" alt="Cel home screen — dark mode" width="720" />
 </p>
 
-## Download
-
-Grab **`Cel-apple-silicon.zip`** (~995 MB) from the release page. No Python, Node, or account needed — Python and all three ML models are bundled.
-
-| | |
-|---|---|
-| **Works on** | macOS 12+ · **Apple Silicon** (M1 / M2 / M3 / M4) |
-| **Internet** | Not required after install |
-| **Account** | None |
-
-### Install (first time)
-
-1. Download **`Cel-apple-silicon.zip`** (~995 MB) from the [release page](https://github.com/MRJOHN5ON/cel/releases/latest)
-2. **Double-click the zip** to unzip — wait until you see **`Cel.app`** in Downloads (don't run it from inside the zip)
-3. **First launch — do not double-click.** Instead, paste this in **Terminal** (change the path if `Cel.app` isn't in Downloads):
+## Quick start (dev mode)
 
 ```bash
-chmod -R u+w ~/Downloads/Cel.app && xattr -cr ~/Downloads/Cel.app && open ~/Downloads/Cel.app
+git clone https://github.com/MRJOHN5ON/cel.git
+cd cel
+chmod +x start.sh
+./start.sh
 ```
 
-4. If macOS asks, click **Open**
+Then open **http://127.0.0.1:5173**.
 
-After that one-time step, double-click works normally. Drag to **Applications** whenever you like.
+First run downloads the **isnet-general-use** model (~179 MB). After that, dev mode works fully offline.
 
-> **xattr “Permission denied” on libtcl/libtk?** Harmless noise from read-only Python files — the `chmod` line above fixes that. Ignore those two lines if you already ran the full command.
+### Requirements
 
-> **Intel Mac?** Current releases are Apple Silicon only. An Intel build would need to be compiled on an Intel Mac.
+- macOS 12+ (Apple Silicon for the bundled app build)
+- Python 3.10+
+- Node.js 18+ (frontend dev server only)
 
 ## How to use
 
@@ -96,47 +83,24 @@ After that one-time step, double-click works normally. Drag to **Applications** 
 - **Dark mode** — toggle in the header; Cel remembers your choice.
 - **Low-res warning** — if the source looks tiny or heavily compressed, Cel flags it before you waste time on a bad export.
 
-## Troubleshooting
+## Build Cel.app (local only)
 
-| Problem | Fix |
-|---------|-----|
-| "App is damaged" / "modified" / won't open | `chmod -R u+w /path/to/Cel.app && xattr -cr /path/to/Cel.app` then open again |
-| xattr "Permission denied" on libtcl/libtk | Normal — run the `chmod` part first (see Install above) |
-| No "Open Anyway" in Privacy & Security | Normal for unsigned apps — that button often never shows; right-click → Open instead |
-| App bounces in Dock and quits | Wrong chip type — you need Apple Silicon. Check `~/Library/Logs/Cel/cel.log` |
-| Slow first removal | Normal — the model loads into memory (~5–10 s) |
-| Processing stuck on a large image | Alpha matting may be running — cancel and retry without force, or wait |
-| Save dialog doesn't appear | macOS 12+ required; try a different save location |
-
-Logs: `~/Library/Logs/Cel/cel.log`
-
----
-
-## For developers
-
-### Run from source
-
-```bash
-chmod +x start.sh
-./start.sh
-```
-
-Then open **http://127.0.0.1:5173**.
-
-First run downloads the **isnet-general-use** model (~179 MB). After that, dev mode works offline.
-
-### Build Cel.app
+Build a self-contained native app on **your** Mac:
 
 ```bash
 chmod +x scripts/build_mac_app.sh
 ./scripts/build_mac_app.sh
 ```
 
-Output: `dist/Cel.app` — native window, bundled Python + UI + all 3 models (~1.1 GB).
+Output: `dist/Cel.app` — native window, bundled Python + UI + all 3 models (~2 GB).
 
-The build script prints the target architecture (`arm64` or `x86_64`). Upload release zips labeled by chip type.
+- Built for the chip type of the machine you build on (`arm64` = Apple Silicon)
+- Requires [python.org](https://www.python.org/downloads/macos/) Python 3.10 installed on the build machine
+- **Unsigned** — fine for personal use on the Mac you built it on; distributing to others needs Apple Developer signing + notarization ($99/year)
 
-### Project structure
+Logs: `~/Library/Logs/Cel/cel.log`
+
+## Project structure
 
 ```
 ├── backend/          # FastAPI + rembg
@@ -146,7 +110,7 @@ The build script prints the target architecture (`arm64` or `x86_64`). Upload re
 └── start.sh
 ```
 
-### API
+## API
 
 | Endpoint | Description |
 |----------|-------------|
@@ -158,7 +122,7 @@ The build script prints the target architecture (`arm64` or `x86_64`). Upload re
 | `POST /api/remove/job` | Async job with progress |
 | `POST /api/batch` | Multi-image → ZIP |
 
-### Options reference
+## Options reference
 
 | Option | Default | Notes |
 |--------|---------|-------|
