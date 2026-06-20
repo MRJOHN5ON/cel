@@ -89,6 +89,9 @@ int main(int argc, char *argv[]) {
     snprintf(python, sizeof(python), "%s/venv/bin/python", resources);
     snprintf(launcher, sizeof(launcher), "%s/launcher.py", resources);
 
+    char frameworks[PATH_MAX];
+    snprintf(frameworks, sizeof(frameworks), "%s/Contents/Frameworks", app_bundle);
+
     if (access(python, X_OK) != 0) {
         log_start_failure("python runtime missing in app bundle");
         return 1;
@@ -100,6 +103,8 @@ int main(int argc, char *argv[]) {
 
     setenv("PYTHONUNBUFFERED", "1", 1);
     setenv("CEL_APP_BUNDLE", app_bundle, 1);
+    /* Bundled venv still links to Python.framework — load ours from the app. */
+    setenv("DYLD_FRAMEWORK_PATH", frameworks, 1);
 
     home = getenv("HOME");
     if (!home) {

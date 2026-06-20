@@ -63,7 +63,11 @@ cp packaging/models_cache/*.onnx "$RESOURCES/models/"
 # ── 4. Bundled Python environment ────────────────────────────────────────────
 echo ""
 echo "→ Creating bundled Python environment..."
-python3 -m venv --copies "$RESOURCES/venv"
+FRAMEWORK_DST="$APP_BUNDLE/Contents/Frameworks/Python.framework"
+chmod +x scripts/bundle_python_framework.sh
+scripts/bundle_python_framework.sh "$APP_BUNDLE"
+BUNDLE_PYTHON="$FRAMEWORK_DST/Versions/3.10/bin/python3.10"
+"$BUNDLE_PYTHON" -m venv --copies "$RESOURCES/venv"
 "$RESOURCES/venv/bin/pip" install -q --upgrade pip
 "$RESOURCES/venv/bin/pip" install -q -r backend/requirements.txt
 "$RESOURCES/venv/bin/pip" install -q -r packaging/requirements.txt
