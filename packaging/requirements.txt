@@ -1,0 +1,2 @@
+# Extra deps for the packaged macOS .app (native window via WKWebView)
+pywebview>=5.0

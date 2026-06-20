@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Temp storage
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# rembg model cache (user-local, not project)
+.u2net/
+.u2netp/
+.isnet-general-use/
+packaging/models_cache/
+packaging/Cel.iconset/
