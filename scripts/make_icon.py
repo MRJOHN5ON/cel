@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ICONSET = ROOT / "packaging" / "Cel.iconset"
 ICNS = ROOT / "packaging" / "Cel.icns"
+README_ICON = ROOT / "docs" / "icon" / "app_icon.png"
 
 ICON_SIZES = [
     ("icon_16x16.png", 16),
@@ -99,7 +100,10 @@ def main() -> int:
         ["iconutil", "-c", "icns", str(ICONSET), "-o", str(ICNS)],
         check=True,
     )
+    README_ICON.parent.mkdir(parents=True, exist_ok=True)
+    draw_icon(512).save(README_ICON, format="PNG")
     print(f"Created {ICNS}")
+    print(f"Created {README_ICON}")
     return 0
 
 
