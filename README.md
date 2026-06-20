@@ -1,8 +1,34 @@
-# Cel
+<p align="center">
+  <img src="docs/icon/app_icon.png" alt="Cel app icon" width="120" />
+</p>
 
-Remove backgrounds on your Mac — free, local, no account. Drop a photo in, get a transparent PNG back. Everything runs on your machine.
+<h1 align="center">Cel</h1>
 
-Named after the animation **cel** — a transparent layer with your subject on it.
+<p align="center">
+  <strong>Local background removal for macOS</strong><br>
+  Drop a photo · get a transparent PNG · nothing leaves your Mac
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon" />
+  <img src="https://img.shields.io/badge/built%20with-Python%20%2B%20React-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python + React" />
+  <img src="https://img.shields.io/badge/privacy-local--only-28D7FF?style=flat-square" alt="Local only" />
+  <img src="https://img.shields.io/badge/latest-v1.0.0-8B9BB0?style=flat-square" alt="v1.0.0" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/MRJOHN5ON/cel/releases/tag/v1.0.0"><strong>Download v1.0.0</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/MRJOHN5ON/cel/releases">All releases</a>
+</p>
+
+---
+
+## What it is
+
+Cel removes backgrounds from photos **entirely on your Mac** — no cloud APIs, no credits, no subscription. Drag in a portrait, product shot, or batch of images and save full-resolution transparent PNGs.
+
+Named after the animation **cel** — a transparent layer with your subject on it. Powered by [rembg](https://github.com/danielgatis/rembg) running locally.
 
 ## Examples
 
@@ -24,13 +50,12 @@ Named after the animation **cel** — a transparent layer with your subject on i
 
 ## Download
 
-**[Get the latest release →](https://github.com/MRJOHN5ON/cel/releases/latest)**
+Grab **`Cel-apple-silicon.zip`** (~690 MB) from the release page. No Python, Node, or account needed — all three ML models are bundled.
 
 | | |
 |---|---|
-| **Works on** | macOS 12+ on **Apple Silicon** (M1 / M2 / M3 / M4) |
-| **Size** | ~690 MB download |
-| **Internet** | Not needed after install — all models are bundled |
+| **Works on** | macOS 12+ · **Apple Silicon** (M1 / M2 / M3 / M4) |
+| **Internet** | Not required after install |
 | **Account** | None |
 
 ### Install (first time)
