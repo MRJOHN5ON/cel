@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon/app_icon.png" alt="Cel app icon" width="120" />
+  <img src="./media/icon/app_icon.png" alt="Cel app icon" width="120" />
 </p>
 
 <h1 align="center">Cel</h1>
