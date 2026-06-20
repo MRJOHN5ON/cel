@@ -56,13 +56,24 @@ chmod +x start.sh
 
 Then open **http://127.0.0.1:5173**.
 
-First run downloads the **isnet-general-use** model (~179 MB). After that, dev mode works fully offline.
+First run downloads the **isnet-general-use** model (~179 MB). After that, dev mode works fully offline. Other models download on first use, or pre-fetch everything with `python scripts/download_models.py` (~1.5 GB total with BRIA).
 
 ### Requirements
 
 - macOS 12+ (Apple Silicon for the bundled app build)
 - Python 3.10+
 - Node.js 18+ (frontend dev server only)
+
+## Models
+
+| Model | Best for | Size | Notes |
+|-------|----------|------|-------|
+| **ISNet General** *(default)* | People, hair, fine edges | ~170 MB | Best balance of quality and speed |
+| **U2Net Human** | Full-body portraits | ~168 MB | Optimized for human subjects |
+| **U2Net** | Objects, products, general | ~168 MB | General-purpose segmentation |
+| **BRIA RMBG 2.0** | Maximum quality | ~1 GB | Slower, uses more RAM — [non-commercial license](THIRD_PARTY_NOTICES.md) only |
+
+Switch models from the dropdown before processing, or **Try another model** on the results screen to rerun.
 
 ## How to use
 
@@ -78,7 +89,7 @@ First run downloads the **isnet-general-use** model (~179 MB). After that, dev m
 
 - **Portraits & hair** — keep **ISNet General** + **Alpha matting** on (defaults). That's the sweet spot for people.
 - **Large images** — alpha matting auto-turns off above ~2.5 MP to save time. You'll see a warning; you can force it on if you need wispy edge detail and don't mind waiting.
-- **Try another model** — from the results screen, switch to **U2Net Human** for full-body portraits or **U2Net** for objects/products, then rerun.
+- **Try another model** — **BRIA RMBG 2.0** for max quality (slower, ~1 GB RAM); **U2Net Human** for full-body portraits; **U2Net** for objects/products
 - **Paste from clipboard** — copy an image anywhere, then paste (Cmd+V) into Cel. Handy for screenshots.
 - **Dark mode** — toggle in the header; Cel remembers your choice.
 - **Low-res warning** — if the source looks tiny or heavily compressed, Cel flags it before you waste time on a bad export.
