@@ -605,10 +605,13 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.target.tagName === 'INPUT') return
-      if (e.code === 'Space' && !spaceHeld.current) {
-        spaceHeld.current = true
-        setSpacePan(true)
+      if (e.code === 'Space') {
         e.preventDefault()
+        if (!spaceHeld.current) {
+          spaceHeld.current = true
+          setSpacePan(true)
+        }
+        return
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault()
@@ -676,9 +679,11 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
   const onPointerMove = (e) => {
     const pt = screenToImage(e.clientX, e.clientY)
 
-    if (pt && isBrushTool && !spaceHeld.current) {
+    if (pt && isBrushTool) {
       setCursor({ x: pt.screenX, y: pt.screenY })
-      syncPointerSample(e.clientX, e.clientY)
+      if (!spaceHeld.current) {
+        syncPointerSample(e.clientX, e.clientY)
+      }
     } else if (!spaceHeld.current) {
       setCursor(null)
       if (!pt) {
@@ -864,7 +869,7 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
           {!ready && <div className="mask-editor__loading">Loading editor…</div>}
           <canvas
             ref={displayRef}
-            className={`mask-editor__canvas ${tool === TOOLS.pan || spacePan ? 'mask-editor__canvas--pan' : ''} ${isBrushTool && !spacePan ? 'mask-editor__canvas--brush' : ''}`}
+            className={`mask-editor__canvas ${tool === TOOLS.pan || spacePan ? 'mask-editor__canvas--pan' : ''} ${isBrushTool ? 'mask-editor__canvas--brush' : ''}`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -880,9 +885,9 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
             onWheel={onWheel}
             style={{ visibility: ready ? 'visible' : 'hidden' }}
           />
-          {ready && cursor && isBrushTool && !spacePan && (
+          {ready && cursor && isBrushTool && (
             <div
-              className={`mask-editor__brush-cursor mask-editor__brush-cursor--${tool}`}
+              className={`mask-editor__brush-cursor mask-editor__brush-cursor--${tool}${spacePan ? ' mask-editor__brush-cursor--space-pan' : ''}`}
               style={{
                 width: brushCursorSize,
                 height: brushCursorSize,
