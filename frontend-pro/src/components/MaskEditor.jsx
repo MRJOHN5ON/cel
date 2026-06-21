@@ -17,6 +17,12 @@ const TOOLS = { erase: 'erase', restore: 'restore', pan: 'pan' }
 const MAX_HISTORY = 20
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 8
+const ZOOM_SLIDER_MIN = Math.round(MIN_ZOOM * 100)
+const ZOOM_SLIDER_MAX = Math.round(MAX_ZOOM * 100)
+
+function clampZoom(value) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
+}
 const MAGNIFIER_SIZE = 128
 const MAGNIFIER_PIXEL_RATIO = 4
 // Cap ring size so it stays readable when zoomed far out (low viewScale).
@@ -97,7 +103,12 @@ function getCheckerColors() {
   }
 }
 
-export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel }) {
+export default function MaskEditor({
+  resultUrl,
+  originalUrl,
+  onDone,
+  onCancel,
+}) {
   const onCancelRef = useRef(onCancel)
   onCancelRef.current = onCancel
 
@@ -718,7 +729,7 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
   const onWheel = (e) => {
     e.preventDefault()
     const factor = e.deltaY < 0 ? 1.1 : 0.9
-    setZoom((z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z * factor)))
+    setZoom((z) => clampZoom(z * factor))
   }
 
   const handleDone = async () => {
@@ -734,6 +745,20 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
       setSaving(false)
     }
   }
+
+  const pushHistorySnapshot = useCallback(() => {
+    const work = workCanvasRef.current
+    if (!work) return
+    const snap = work
+      .getContext('2d', { willReadFrequently: true })
+      .getImageData(0, 0, work.width, work.height)
+    historyPast.current = [
+      ...historyPast.current.slice(-(MAX_HISTORY - 1)),
+      cloneImageData(snap),
+    ]
+    historyFuture.current = []
+    syncHistoryFlags()
+  }, [syncHistoryFlags])
 
   const resetView = () => {
     setZoom(1)
@@ -861,6 +886,7 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
         </div>
       </div>
 
+      <div className="mask-editor__workspace-row">
       <div className="mask-editor__workspace">
         <div
           ref={containerRef}
@@ -913,14 +939,39 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
       </div>
 
       {ready && (
+        <aside className="mask-editor__zoom-rail" aria-label="Zoom">
+          <span className="mask-editor__zoom-label">Zoom</span>
+          <input
+            type="range"
+            className="mask-editor__zoom-slider"
+            min={ZOOM_SLIDER_MIN}
+            max={ZOOM_SLIDER_MAX}
+            value={Math.round(zoom * 100)}
+            onChange={(e) => setZoom(clampZoom(Number(e.target.value) / 100))}
+            aria-valuetext={`${Math.round(zoom * 100)} percent`}
+          />
+          <span className="mask-editor__zoom-value">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            className="btn btn--ghost btn--compact mask-editor__zoom-reset"
+            onClick={resetView}
+            title="Reset zoom to 100% and re-center the image"
+          >
+            Reset
+          </button>
+        </aside>
+      )}
+      </div>
+
+      {ready && (
         <div className="mask-editor__status" aria-live="polite">
           {spacePan
             ? 'Space — drag to pan'
             : tool === TOOLS.pan
-              ? 'Drag to pan · scroll to zoom · Space+drag also works'
+              ? 'Drag to pan · scroll or use zoom slider · Space+drag also works'
               : tool === TOOLS.restore
-                ? 'Restore paints back the original photo · Space+drag to pan'
-                : 'Erase removes subject · Space+drag to pan · scroll to zoom'}
+                ? 'Restore paints back the original photo · scroll or zoom slider to zoom'
+                : 'Erase removes subject · scroll or zoom slider to zoom'}
           {showRemoved && ' · Guide on'}
           {showMagnifier && ' · Detail view active'}
           {' · '}{imgSize.w}×{imgSize.h}
@@ -932,14 +983,14 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
           type="button"
           className="btn btn--ghost"
           onClick={startOver}
-          disabled={!canUndo}
+          disabled={!canUndo || saving}
           title="Discard all edits and restore the original cutout"
         >
           <IconStartOver size={14} />
           Start Over
         </button>
         <div className="mask-editor__footer-actions">
-        <button type="button" className="btn btn--ghost" onClick={onCancel}>
+        <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={saving}>
           <IconClose size={14} />
           Cancel
         </button>

@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,11 +18,14 @@ from remover import (
     ALPHA_MATTING_MAX_SIDE_PX,
     DEFAULT_MODEL,
     MODELS,
+    SAM_MODEL,
     get_source_info,
     is_model_cached,
     png_to_jpg,
     preload_session,
+    refine_with_mask,
     remove_background,
+    segment_with_sam,
 )
 from jobs import get_job, start_remove_job
 
@@ -87,11 +90,19 @@ def health() -> dict:
 
 @app.get("/api/models")
 def list_models() -> dict:
+    sam_meta = {
+        "id": SAM_MODEL,
+        "name": "Segment Anything (SAM)",
+        "description": "Interactive click-to-segment — use /api/segment/sam",
+        "interactive": True,
+        "default": False,
+    }
     return {
         "models": [
-            {"id": mid, **meta, "default": mid == DEFAULT_MODEL}
+            {"id": mid, **meta, "default": mid == DEFAULT_MODEL, "interactive": False}
             for mid, meta in MODELS.items()
-        ]
+        ],
+        "segment_models": [sam_meta],
     }
 
 
@@ -122,8 +133,9 @@ def app_config() -> dict:
 async def remove_bg(
     file: UploadFile = File(...),
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
     format: str = Query("png"),
     jpg_background: str = Query("#ffffff"),
@@ -138,6 +150,7 @@ async def remove_bg(
             model=model,
             alpha_matting=alpha_matting,
             force_alpha_matting=force_alpha_matting,
+            post_process_mask=post_process_mask,
             trim=trim,
         )
     except ValueError as e:
@@ -180,8 +193,9 @@ async def remove_bg(
 async def remove_bg_json(
     file: UploadFile = File(...),
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
 ) -> JSONResponse:
     """Return base64 PNG + metadata for in-browser preview."""
@@ -196,6 +210,7 @@ async def remove_bg_json(
             model=model,
             alpha_matting=alpha_matting,
             force_alpha_matting=force_alpha_matting,
+            post_process_mask=post_process_mask,
             trim=trim,
         )
     except ValueError as e:
@@ -219,8 +234,9 @@ async def remove_bg_json(
 async def remove_bg_job(
     file: UploadFile = File(...),
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
 ) -> JSONResponse:
     """Start background removal and poll GET /api/jobs/{id} for progress."""
@@ -233,6 +249,7 @@ async def remove_bg_job(
             model=model,
             alpha_matting=alpha_matting,
             force_alpha_matting=force_alpha_matting,
+            post_process_mask=post_process_mask,
             trim=trim,
             runner=remove_background,
         )
@@ -262,12 +279,132 @@ def job_status(job_id: str) -> JSONResponse:
     return JSONResponse(payload)
 
 
+@app.post("/api/segment/sam")
+async def segment_sam(
+    file: UploadFile = File(...),
+    prompt: str = Form(...),
+) -> JSONResponse:
+    """Segment with SAM using point/rectangle prompts. Returns base64 mask PNG."""
+    import base64
+    import json
+
+    _validate_upload(file)
+    data = await file.read()
+
+    try:
+        sam_prompt = json.loads(prompt)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Invalid SAM prompt JSON.")
+
+    if not isinstance(sam_prompt, list) or len(sam_prompt) == 0:
+        raise HTTPException(400, "SAM prompt must be a non-empty JSON array.")
+
+    try:
+        mask_bytes, metadata = segment_with_sam(data, sam_prompt)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception:
+        raise HTTPException(500, "SAM segmentation failed.")
+
+    return JSONResponse(
+        {
+            "mask": base64.b64encode(mask_bytes).decode("ascii"),
+            "metadata": metadata,
+        }
+    )
+
+
+@app.post("/api/segment/sam/apply")
+async def segment_sam_apply(
+    file: UploadFile = File(...),
+    prompt: str = Form(...),
+    alpha_matting: bool = Query(False),
+    force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(True),
+) -> JSONResponse:
+    """SAM segment from prompts, then build a cutout via mask refine."""
+    import base64
+    import json
+
+    _validate_upload(file)
+    data = await file.read()
+
+    try:
+        sam_prompt = json.loads(prompt)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Invalid SAM prompt JSON.")
+
+    if not isinstance(sam_prompt, list) or len(sam_prompt) == 0:
+        raise HTTPException(400, "SAM prompt must be a non-empty JSON array.")
+
+    try:
+        mask_bytes, seg_meta = segment_with_sam(data, sam_prompt)
+        png_bytes, refine_meta = refine_with_mask(
+            data,
+            mask_bytes,
+            alpha_matting=alpha_matting,
+            force_alpha_matting=force_alpha_matting,
+            post_process_mask=post_process_mask,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception:
+        raise HTTPException(500, "SAM segmentation failed.")
+
+    metadata = {**refine_meta, "model": SAM_MODEL, "sam": seg_meta}
+
+    return JSONResponse(
+        {
+            "image": base64.b64encode(png_bytes).decode("ascii"),
+            "metadata": metadata,
+        }
+    )
+
+
+@app.post("/api/refine/mask")
+async def refine_mask(
+    file: UploadFile = File(...),
+    mask: UploadFile = File(...),
+    alpha_matting: bool = Query(False),
+    force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(True),
+) -> JSONResponse:
+    """Refine edges around a user-edited alpha mask."""
+    import base64
+
+    _validate_upload(file)
+    data = await file.read()
+    mask_data = await mask.read()
+
+    if not mask_data:
+        raise HTTPException(400, "Mask file is empty.")
+
+    try:
+        png_bytes, metadata = refine_with_mask(
+            data,
+            mask_data,
+            alpha_matting=alpha_matting,
+            force_alpha_matting=force_alpha_matting,
+            post_process_mask=post_process_mask,
+        )
+    except Exception:
+        raise HTTPException(500, "Mask refinement failed.")
+
+    return JSONResponse(
+        {
+            "image": base64.b64encode(png_bytes).decode("ascii"),
+            "metadata": metadata,
+        }
+    )
+
+
 @app.post("/api/batch")
 async def batch_remove(
     files: Annotated[list[UploadFile], File(...)],
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
 ) -> StreamingResponse:
     if not files:
@@ -286,6 +423,7 @@ async def batch_remove(
                     model=model,
                     alpha_matting=alpha_matting,
                     force_alpha_matting=force_alpha_matting,
+                    post_process_mask=post_process_mask,
                     trim=trim,
                 )
                 name = _swap_ext(upload.filename or "image", ".png")

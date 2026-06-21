@@ -5,8 +5,9 @@ const LEGACY_STORAGE_KEY = 'rembg-studio-settings'
 
 const DEFAULTS = {
   model: 'bria-rmbg',
-  alphaMatting: true,
+  alphaMatting: false,
   forceAlphaMatting: false,
+  postProcessMask: true,
 }
 
 export function useSettings() {
@@ -18,8 +19,9 @@ export function useSettings() {
       const parsed = JSON.parse(saved)
       return {
         model: parsed.model ?? DEFAULTS.model,
-        alphaMatting: parsed.alphaMatting ?? DEFAULTS.alphaMatting,
-        forceAlphaMatting: parsed.forceAlphaMatting ?? DEFAULTS.forceAlphaMatting,
+        alphaMatting: DEFAULTS.alphaMatting,
+        forceAlphaMatting: DEFAULTS.forceAlphaMatting,
+        postProcessMask: DEFAULTS.postProcessMask,
       }
     } catch {
       return DEFAULTS

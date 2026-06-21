@@ -35,6 +35,7 @@ MODELS: dict[str, dict[str, str]] = {
 }
 
 DEFAULT_MODEL = "bria-rmbg"
+SAM_MODEL = "sam"
 LOW_RES_FILE_SIZE_BYTES = 100 * 1024  # 100 KB
 LOW_RES_DIMENSION_PX = 1000
 # Alpha matting scales badly on large images (minutes+). Disable past this size.
@@ -44,6 +45,10 @@ ALPHA_MATTING_MAX_SIDE_PX = 2000
 _sessions: dict[str, Any] = {}
 
 
+def _allowed_models() -> set[str]:
+    return set(MODELS) | {SAM_MODEL}
+
+
 def _is_session_cached(model: str) -> bool:
     return model in _sessions
 
@@ -51,7 +56,7 @@ def _is_session_cached(model: str) -> bool:
 def get_session(model: str) -> Any:
     from rembg import new_session
 
-    if model not in MODELS:
+    if model not in _allowed_models():
         raise ValueError(f"Unknown model: {model}")
     if model not in _sessions:
         _sessions[model] = new_session(model)
@@ -100,8 +105,9 @@ def remove_background(
     data: bytes,
     *,
     model: str = DEFAULT_MODEL,
-    alpha_matting: bool = True,
+    alpha_matting: bool = False,
     force_alpha_matting: bool = False,
+    post_process_mask: bool = True,
     trim: bool = False,
     progress_callback: Any = None,
 ) -> tuple[bytes, dict[str, Any]]:
@@ -161,7 +167,7 @@ def remove_background(
         alpha_matting_foreground_threshold=240,
         alpha_matting_background_threshold=10,
         alpha_matting_erode_size=10,
-        post_process_mask=False,
+        post_process_mask=post_process_mask,
     )
 
     log.info("Background removed in %.1fs", time.time() - started)
@@ -198,6 +204,140 @@ def remove_background(
         "warnings": source_info["warnings"],
         "model": model,
         "alpha_matting": use_alpha_matting,
+        "post_process_mask": post_process_mask,
+    }
+    return png_bytes, metadata
+
+
+def segment_with_sam(
+    data: bytes,
+    sam_prompt: list[dict[str, Any]],
+    *,
+    progress_callback: Any = None,
+) -> tuple[bytes, dict[str, Any]]:
+    """Return a grayscale mask PNG from SAM point/rectangle prompts."""
+    import logging
+    import time
+    from rembg import remove
+
+    log = logging.getLogger("cel.remover")
+    source_info = get_source_info(data)
+
+    if progress_callback:
+        progress_callback(20, "Loading SAM…")
+
+    session = get_session(SAM_MODEL)
+    started = time.time()
+
+    if progress_callback:
+        progress_callback(40, "Segmenting…")
+
+    mask_bytes = remove(
+        data,
+        session=session,
+        only_mask=True,
+        sam_prompt=sam_prompt,
+        force_return_bytes=True,
+    )
+
+    log.info("SAM segment in %.1fs", time.time() - started)
+
+    if progress_callback:
+        progress_callback(95, "Finishing up…")
+
+    metadata = {
+        "source_width": source_info["width"],
+        "source_height": source_info["height"],
+        "model": SAM_MODEL,
+        "prompt_count": len(sam_prompt),
+    }
+    return mask_bytes, metadata
+
+
+def refine_with_mask(
+    data: bytes,
+    mask_data: bytes,
+    *,
+    alpha_matting: bool = False,
+    force_alpha_matting: bool = False,
+    post_process_mask: bool = True,
+    progress_callback: Any = None,
+) -> tuple[bytes, dict[str, Any]]:
+    """Refine edges around a user-edited alpha mask using matting + optional cleanup."""
+    import logging
+    import time
+    from rembg.bg import alpha_matting_cutout, post_process, putalpha_cutout
+
+    log = logging.getLogger("cel.remover")
+    source_info = get_source_info(data)
+    width, height = source_info["width"], source_info["height"]
+    use_alpha_matting = alpha_matting
+
+    if (
+        alpha_matting
+        and not force_alpha_matting
+        and should_skip_alpha_matting(width, height)
+    ):
+        use_alpha_matting = False
+        source_info["warnings"] = [
+            *source_info["warnings"],
+            (
+                f"Alpha matting skipped for this {width}×{height} image during refine. "
+                "Enable “Force on large images” if you want it anyway."
+            ),
+        ]
+
+    if progress_callback:
+        progress_callback(30, "Preparing mask…")
+
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    mask_img = Image.open(io.BytesIO(mask_data)).convert("L")
+    if mask_img.size != img.size:
+        mask_img = mask_img.resize(img.size, Image.Resampling.LANCZOS)
+
+    if post_process_mask:
+        import numpy as np
+
+        mask_arr = post_process(np.array(mask_img))
+        mask_img = Image.fromarray(mask_arr)
+
+    if progress_callback:
+        progress_callback(55, "Refining edges…")
+
+    started = time.time()
+    try:
+        if use_alpha_matting:
+            cutout = alpha_matting_cutout(
+                img,
+                mask_img,
+                240,
+                10,
+                10,
+            )
+        else:
+            cutout = putalpha_cutout(img, mask_img)
+    except ValueError:
+        cutout = putalpha_cutout(img, mask_img)
+
+    log.info("Mask refine in %.1fs", time.time() - started)
+
+    if progress_callback:
+        progress_callback(92, "Finishing up…")
+
+    out_buf = io.BytesIO()
+    cutout.convert("RGBA").save(out_buf, format="PNG", optimize=False)
+    png_bytes = out_buf.getvalue()
+
+    metadata = {
+        "source_width": width,
+        "source_height": height,
+        "output_width": cutout.size[0],
+        "output_height": cutout.size[1],
+        "file_size": len(png_bytes),
+        "warnings": source_info["warnings"],
+        "alpha_matting": use_alpha_matting,
+        "post_process_mask": post_process_mask,
+        "refined": True,
     }
     return png_bytes, metadata
 
