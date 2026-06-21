@@ -432,12 +432,6 @@ export default function App() {
           key={resultUrl}
           resultUrl={resultUrl}
           originalUrl={originalUrl}
-          originalFile={file}
-          refineSettings={{
-            alphaMatting: settings.alphaMatting,
-            forceAlphaMatting: settings.forceAlphaMatting,
-            postProcessMask: settings.postProcessMask,
-          }}
           onDone={applyEditedResult}
           onCancel={handleEditCancel}
         />
