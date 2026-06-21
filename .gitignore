@@ -13,6 +13,7 @@ env/
 # Node
 node_modules/
 frontend/dist/
+frontend-pro/dist/
 
 # Temp storage
 uploads/*
