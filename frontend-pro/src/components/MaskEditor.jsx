@@ -19,6 +19,8 @@ const MIN_ZOOM = 0.1
 const MAX_ZOOM = 8
 const MAGNIFIER_SIZE = 128
 const MAGNIFIER_PIXEL_RATIO = 4
+// Cap ring size so it stays readable when zoomed far out (low viewScale).
+const MAGNIFIER_MAX_BRUSH_RADIUS = (MAGNIFIER_SIZE / 2) * 0.45
 const MAGNIFIER_MAX_BRUSH_SIZE = 5
 const MAGNIFIER_SHOW_BELOW_SCALE = 0.88
 const MAGNIFIER_HIDE_ABOVE_SCALE = 0.94
@@ -309,9 +311,13 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
         ctx.drawImage(overlayCanvasRef.current, sx, sy, srcDim, srcDim, 0, 0, size, size)
       }
 
-      // Match main brush cursor — screen-pixel radius, not image-space scaled by zoom.
-      // Scaling by 1/viewScale made the ring fill the loupe when zoomed out.
-      const brushRadiusMag = brushSize
+      // Loupe shows image at MAGNIFIER_PIXEL_RATIO×; scale brush from image space.
+      // Cap radius so the ring does not fill the circle when viewScale is very low.
+      const brushRadiusImg = brushSize / viewScale
+      const brushRadiusMag = Math.min(
+        brushRadiusImg * MAGNIFIER_PIXEL_RATIO,
+        MAGNIFIER_MAX_BRUSH_RADIUS,
+      )
       const activeTool = toolRef.current
 
       ctx.beginPath()
