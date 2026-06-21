@@ -231,6 +231,7 @@ export default function App() {
       model: settings.model,
       alpha_matting: settings.alphaMatting,
       force_alpha_matting: settings.forceAlphaMatting,
+      post_process_mask: settings.postProcessMask,
     })
 
     const form = new FormData()
@@ -314,6 +315,7 @@ export default function App() {
       model: settings.model,
       alpha_matting: settings.alphaMatting,
       force_alpha_matting: settings.forceAlphaMatting,
+      post_process_mask: settings.postProcessMask,
     })
 
     const form = new FormData()

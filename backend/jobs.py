@@ -64,6 +64,7 @@ def start_remove_job(
     model: str,
     alpha_matting: bool,
     force_alpha_matting: bool,
+    post_process_mask: bool = False,
     trim: bool,
     runner: Callable[..., tuple[bytes, dict[str, Any]]],
 ) -> str:
@@ -118,6 +119,7 @@ def start_remove_job(
                 model=model,
                 alpha_matting=alpha_matting,
                 force_alpha_matting=force_alpha_matting,
+                post_process_mask=post_process_mask,
                 trim=trim,
                 progress_callback=on_progress,
             )

@@ -70,6 +70,19 @@ export default function ProcessingOptions({ settings, onChange, models, inspectI
             </span>
           </label>
         )}
+
+        <label className="controls-bar__toggle">
+          <input
+            type="checkbox"
+            checked={settings.postProcessMask}
+            onChange={(e) => onChange({ postProcessMask: e.target.checked })}
+          />
+          <span className="controls-bar__track" />
+          <span className="controls-bar__toggle-text">
+            Edge cleanup
+            <span className="controls-bar__hint">Sharper mask edges (post-process)</span>
+          </span>
+        </label>
       </div>
 
       {tipOpen && (

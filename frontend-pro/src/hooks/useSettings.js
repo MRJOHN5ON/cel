@@ -7,6 +7,7 @@ const DEFAULTS = {
   model: 'bria-rmbg',
   alphaMatting: true,
   forceAlphaMatting: false,
+  postProcessMask: false,
 }
 
 export function useSettings() {
@@ -20,6 +21,7 @@ export function useSettings() {
         model: parsed.model ?? DEFAULTS.model,
         alphaMatting: parsed.alphaMatting ?? DEFAULTS.alphaMatting,
         forceAlphaMatting: parsed.forceAlphaMatting ?? DEFAULTS.forceAlphaMatting,
+        postProcessMask: parsed.postProcessMask ?? DEFAULTS.postProcessMask,
       }
     } catch {
       return DEFAULTS
