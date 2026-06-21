@@ -953,11 +953,11 @@ export default function MaskEditor({
           <span className="mask-editor__zoom-value">{Math.round(zoom * 100)}%</span>
           <button
             type="button"
-            className="btn btn--ghost btn--compact"
+            className="btn btn--ghost btn--compact mask-editor__zoom-reset"
             onClick={resetView}
-            title="Reset zoom to 100%"
+            title="Reset zoom to 100% and re-center the image"
           >
-            100%
+            Reset
           </button>
         </aside>
       )}

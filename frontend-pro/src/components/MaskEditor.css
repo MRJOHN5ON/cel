@@ -132,6 +132,11 @@
   color: var(--text-secondary);
 }
 
+.mask-editor__zoom-reset {
+  width: 100%;
+  justify-content: center;
+}
+
 .mask-editor__viewport {
   position: relative;
   width: 100%;
