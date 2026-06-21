@@ -29,7 +29,7 @@ Named after the animation **cel** — a transparent layer with your subject on i
 
 **Also on Android:** [Cel for Android](https://github.com/MRJOHN5ON/cel-android) — sideload APK on [v1.5.3](https://github.com/MRJOHN5ON/cel-android/releases/tag/v1.5.3).
 
-**No pre-built downloads.** Clone the repo and run from source or build `Cel Pro.app` yourself on your Mac. Public releases may come later once the app is signed and notarized.
+**Requires Python 3.10+** on each Mac (install once from [python.org](https://www.python.org/downloads/macos/)). Cel Pro does **not** bundle Python — that kept downloads smaller and avoids the fragile 3 GB embedded-runtime builds we retired. A one-time setup script installs the Python packages Cel needs.
 
 ## What's new in v1.1 — Cel Pro
 
@@ -84,6 +84,56 @@ After background removal, click **Edit Mask** to open the precision editor:
   <img src="docs/screenshots/home-dark.png" alt="Cel Pro home screen — dark mode" width="720" />
 </p>
 
+### Requirements
+
+- macOS 12+ (Apple Silicon recommended)
+- **Python 3.10+** from [python.org](https://www.python.org/downloads/macos/) — required for the native `.app` and dev mode
+- Node.js 18+ (dev mode / building the frontend only)
+
+> **Important:** Use the installer from **python.org**, not Xcode Command Line Tools alone. The python.org installer adds `python3` at `/Library/Frameworks/Python.framework/Versions/3.x/bin/python3`.
+
+## Install Cel Pro.app
+
+For you or anyone downloading a release zip or building locally:
+
+### 1. Install Python (one time per Mac)
+
+1. Download **Python 3.10 or newer** from [python.org/downloads/macos](https://www.python.org/downloads/macos/)
+2. Run the installer (standard options are fine)
+3. Confirm in Terminal: `python3 --version` → should show 3.10+
+
+### 2. Get the app
+
+**From a GitHub release** — download the zip, unzip, and move `Cel Pro.app` to Applications.
+
+**Or build yourself:**
+
+```bash
+git clone https://github.com/MRJOHN5ON/cel.git
+cd cel
+chmod +x scripts/build_mac_app.sh
+./scripts/build_mac_app.sh
+cp -R "dist/Cel Pro.app" /Applications/
+```
+
+### 3. One-time dependency setup
+
+Double-click **`Install Cel Pro.command`** (sits next to `Cel Pro.app` in `dist/` after a build, or in the release zip).
+
+Or from Terminal:
+
+```bash
+./scripts/setup_cel_pro_deps.sh
+```
+
+This creates `~/Library/Application Support/Cel Pro/venv` and installs rembg, FastAPI, pywebview, etc. (a few hundred MB, needs internet once).
+
+### 4. Open Cel Pro
+
+Launch from Applications. If setup was skipped, the app will prompt you to install Python and run the installer script.
+
+Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
+
 ## Quick start (dev mode)
 
 ```bash
@@ -95,13 +145,13 @@ chmod +x start.sh
 
 Then open **http://127.0.0.1:5173**.
 
+Dev mode uses a local `venv/` inside the repo (separate from the Application Support venv used by the `.app`).
+
 First run downloads the **isnet-general-use** model (~179 MB). After that, dev mode works fully offline. Other models download on first use, or pre-fetch everything with `python scripts/download_models.py` (~1.5 GB total with BRIA).
 
-### Requirements
+### Dev requirements
 
-- macOS 12+ (Apple Silicon for the bundled app build)
-- Python 3.10+
-- Node.js 18+ (frontend dev server only)
+Same as above — Python 3.10+, Node 18+ for the Vite dev server.
 
 ## Models
 
@@ -136,22 +186,31 @@ Switch models from the dropdown before processing, or **Try another model** on t
 - **Dark mode** — toggle in the header; Cel Pro remembers your choice.
 - **Low-res warning** — if the source looks tiny or heavily compressed, Cel Pro flags it before you waste time on a bad export.
 
-## Build Cel Pro.app (local only)
+## Build Cel Pro.app
 
-Build a self-contained native app on **your** Mac:
+Build the native app on your Mac (models included, **no bundled Python**):
 
 ```bash
 chmod +x scripts/build_mac_app.sh
 ./scripts/build_mac_app.sh
 ```
 
-Output: `dist/Cel Pro.app` — native window, bundled Python + Pro UI + all models (~3 GB with BRIA).
+Output in `dist/`:
+
+| File | Purpose |
+|------|---------|
+| `Cel Pro.app` | Native app (~1.5 GB with all models) |
+| `Install Cel Pro.command` | One-time Python dependency setup |
+
+After building, run **`Install Cel Pro.command`** once, then open the app.
 
 - Built for the chip type of the machine you build on (`arm64` = Apple Silicon)
-- Requires [python.org](https://www.python.org/downloads/macos/) Python 3.10 installed on the build machine
-- **Unsigned** — fine for personal use on the Mac you built it on; distributing to others needs Apple Developer signing + notarization ($99/year)
+- **Unsigned** — right-click → Open the first time; fine for personal use
+- Distributing to others still needs Apple Developer signing + notarization ($99/year)
 
 Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
+
+> **Why no bundled Python?** Earlier releases tried to embed python.org’s framework inside the app (~3 GB, fragile on other Macs). Requiring system Python + a one-time setup is more reliable for family and friends.
 
 ## Project structure
 
@@ -161,7 +220,7 @@ Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
 ├── frontend/         # Classic UI (legacy, no mask editor)
 ├── packaging-pro/    # Cel Pro.app launcher & native bridges
 ├── packaging/        # Classic Cel.app packaging (legacy)
-├── scripts/          # build_mac_app.sh, download_models.py
+├── scripts/          # build_mac_app.sh, setup_cel_pro_deps.sh, download_models.py
 ├── start.sh          # Dev mode — Cel Pro (default)
 └── start-classic.sh  # Dev mode — classic UI only
 ```
