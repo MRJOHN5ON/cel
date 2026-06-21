@@ -314,6 +314,53 @@ async def segment_sam(
     )
 
 
+@app.post("/api/segment/sam/apply")
+async def segment_sam_apply(
+    file: UploadFile = File(...),
+    prompt: str = Form(...),
+    alpha_matting: bool = Query(True),
+    force_alpha_matting: bool = Query(False),
+    post_process_mask: bool = Query(False),
+) -> JSONResponse:
+    """SAM segment from prompts, then build a cutout via mask refine."""
+    import base64
+    import json
+
+    _validate_upload(file)
+    data = await file.read()
+
+    try:
+        sam_prompt = json.loads(prompt)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Invalid SAM prompt JSON.")
+
+    if not isinstance(sam_prompt, list) or len(sam_prompt) == 0:
+        raise HTTPException(400, "SAM prompt must be a non-empty JSON array.")
+
+    try:
+        mask_bytes, seg_meta = segment_with_sam(data, sam_prompt)
+        png_bytes, refine_meta = refine_with_mask(
+            data,
+            mask_bytes,
+            alpha_matting=alpha_matting,
+            force_alpha_matting=force_alpha_matting,
+            post_process_mask=post_process_mask,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception:
+        raise HTTPException(500, "SAM segmentation failed.")
+
+    metadata = {**refine_meta, "model": SAM_MODEL, "sam": seg_meta}
+
+    return JSONResponse(
+        {
+            "image": base64.b64encode(png_bytes).decode("ascii"),
+            "metadata": metadata,
+        }
+    )
+
+
 @app.post("/api/refine/mask")
 async def refine_mask(
     file: UploadFile = File(...),

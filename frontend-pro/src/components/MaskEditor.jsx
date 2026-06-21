@@ -9,6 +9,7 @@ import {
   IconClose,
   IconPan,
   IconStartOver,
+  IconWand,
 } from './Icons'
 import './MaskEditor.css'
 
@@ -40,6 +41,31 @@ function cloneImageData(data) {
     data.width,
     data.height,
   )
+}
+
+async function exportAlphaMaskPng(canvas) {
+  const { width, height } = canvas
+  const src = canvas.getContext('2d', { willReadFrequently: true }).getImageData(
+    0,
+    0,
+    width,
+    height,
+  )
+  const mask = new ImageData(width, height)
+  for (let i = 0; i < src.data.length; i += 4) {
+    const alpha = src.data[i + 3]
+    mask.data[i] = alpha
+    mask.data[i + 1] = alpha
+    mask.data[i + 2] = alpha
+    mask.data[i + 3] = 255
+  }
+  const tmp = document.createElement('canvas')
+  tmp.width = width
+  tmp.height = height
+  tmp.getContext('2d', { willReadFrequently: true }).putImageData(mask, 0, 0)
+  return new Promise((resolve, reject) => {
+    tmp.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Mask export failed'))), 'image/png')
+  })
 }
 
 function brushFalloff(dist, radius, hardness) {
@@ -97,7 +123,14 @@ function getCheckerColors() {
   }
 }
 
-export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel }) {
+export default function MaskEditor({
+  resultUrl,
+  originalUrl,
+  originalFile,
+  refineSettings,
+  onDone,
+  onCancel,
+}) {
   const onCancelRef = useRef(onCancel)
   onCancelRef.current = onCancel
 
@@ -123,6 +156,8 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [refining, setRefining] = useState(false)
+  const [refineError, setRefineError] = useState(null)
   const [cursor, setCursor] = useState(null)
   const [cursorImage, setCursorImage] = useState(null)
   const [spacePan, setSpacePan] = useState(false)
@@ -723,7 +758,7 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
 
   const handleDone = async () => {
     const work = workCanvasRef.current
-    if (!work || saving) return
+    if (!work || saving || refining) return
     setSaving(true)
     try {
       const blob = await new Promise((resolve, reject) => {
@@ -732,6 +767,66 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
       onDone(blob)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const pushHistorySnapshot = useCallback(() => {
+    const work = workCanvasRef.current
+    if (!work) return
+    const snap = work
+      .getContext('2d', { willReadFrequently: true })
+      .getImageData(0, 0, work.width, work.height)
+    historyPast.current = [
+      ...historyPast.current.slice(-(MAX_HISTORY - 1)),
+      cloneImageData(snap),
+    ]
+    historyFuture.current = []
+    syncHistoryFlags()
+  }, [syncHistoryFlags])
+
+  const handleRefineWithAi = async () => {
+    const work = workCanvasRef.current
+    if (!work || !originalFile || !refineSettings || refining || saving) return
+
+    setRefining(true)
+    setRefineError(null)
+
+    try {
+      const maskBlob = await exportAlphaMaskPng(work)
+      const params = new URLSearchParams({
+        alpha_matting: refineSettings.alphaMatting,
+        force_alpha_matting: refineSettings.forceAlphaMatting,
+        post_process_mask: refineSettings.postProcessMask,
+      })
+      const form = new FormData()
+      form.append('file', originalFile)
+      form.append('mask', maskBlob, 'mask.png')
+
+      const res = await fetch(`/api/refine/mask?${params}`, { method: 'POST', body: form })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'AI refine failed.')
+
+      const bytes = Uint8Array.from(atob(data.image), (c) => c.charCodeAt(0))
+      const blob = new Blob([bytes], { type: 'image/png' })
+      const refinedUrl = URL.createObjectURL(blob)
+
+      pushHistorySnapshot()
+
+      const refinedImg = await loadImage(refinedUrl)
+      URL.revokeObjectURL(refinedUrl)
+
+      const ctx = work.getContext('2d', { willReadFrequently: true })
+      ctx.clearRect(0, 0, work.width, work.height)
+      ctx.drawImage(refinedImg, 0, 0)
+
+      painting.current = false
+      lastPoint.current = null
+      strokeSnapshot.current = null
+      refreshGuide()
+    } catch (err) {
+      setRefineError(err.message || 'AI refine failed.')
+    } finally {
+      setRefining(false)
     }
   }
 
@@ -914,7 +1009,12 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
 
       {ready && (
         <div className="mask-editor__status" aria-live="polite">
-          {spacePan
+          {refineError && (
+            <span className="mask-editor__refine-error">{refineError} · </span>
+          )}
+          {refining
+            ? 'Refining edges with AI…'
+            : spacePan
             ? 'Space — drag to pan'
             : tool === TOOLS.pan
               ? 'Drag to pan · scroll to zoom · Space+drag also works'
@@ -932,14 +1032,26 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
           type="button"
           className="btn btn--ghost"
           onClick={startOver}
-          disabled={!canUndo}
+          disabled={!canUndo || refining}
           title="Discard all edits and restore the original cutout"
         >
           <IconStartOver size={14} />
           Start Over
         </button>
+        {originalFile && refineSettings && (
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={handleRefineWithAi}
+            disabled={refining || saving}
+            title="Re-run AI edge refinement around your brush edits"
+          >
+            <IconWand size={14} />
+            {refining ? 'Refining…' : 'Refine with AI'}
+          </button>
+        )}
         <div className="mask-editor__footer-actions">
-        <button type="button" className="btn btn--ghost" onClick={onCancel}>
+        <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={refining}>
           <IconClose size={14} />
           Cancel
         </button>
@@ -947,7 +1059,7 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
           type="button"
           className="btn btn--primary"
           onClick={handleDone}
-          disabled={!ready || saving}
+          disabled={!ready || saving || refining}
         >
           <IconCheck size={14} />
           {saving ? 'Applying…' : 'Done Editing'}

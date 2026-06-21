@@ -5,6 +5,7 @@ import PreviewHint from './components/PreviewHint'
 import ProcessingOptions from './components/ProcessingOptions'
 import BatchPanel, { buildZip } from './components/BatchPanel'
 import MaskEditor from './components/MaskEditor'
+import SamPointPicker from './components/SamPointPicker'
 import {
   LogoMark,
   IconBatch,
@@ -357,6 +358,17 @@ export default function App() {
     setProgress({ pct: 0, message: '' })
   }
 
+  const applySamCutout = useCallback((blob, meta) => {
+    revokeResultUrl()
+    setResultBlob(blob)
+    const url = URL.createObjectURL(blob)
+    resultUrlRef.current = url
+    setResultUrl(url)
+    setMetadata(meta)
+    setWarnings(meta.warnings || [])
+    setError(null)
+  }, [])
+
   const applyEditedResult = useCallback((blob) => {
     revokeResultUrl()
     setResultBlob(blob)
@@ -381,7 +393,10 @@ export default function App() {
   const previewSourceH = metadata?.source_height ?? inspectInfo?.height
   const previewResultW = metadata?.output_width ?? previewSourceW
   const previewResultH = metadata?.output_height ?? previewSourceH
-  const currentModelName = models.find((m) => m.id === metadata?.model)?.name ?? metadata?.model
+  const currentModelName =
+    metadata?.model === 'sam'
+      ? 'SAM'
+      : models.find((m) => m.id === metadata?.model)?.name ?? metadata?.model
 
   const rerun = () => {
     if (!file || processing) return
@@ -417,6 +432,12 @@ export default function App() {
           key={resultUrl}
           resultUrl={resultUrl}
           originalUrl={originalUrl}
+          originalFile={file}
+          refineSettings={{
+            alphaMatting: settings.alphaMatting,
+            forceAlphaMatting: settings.forceAlphaMatting,
+            postProcessMask: settings.postProcessMask,
+          }}
           onDone={applyEditedResult}
           onCancel={handleEditCancel}
         />
@@ -618,6 +639,14 @@ export default function App() {
                   <IconClose size={14} />
                 </button>
               </section>
+
+              <SamPointPicker
+                imageUrl={originalUrl}
+                file={file}
+                settings={settings}
+                disabled={backendOnline === false || processing}
+                onApply={applySamCutout}
+              />
 
               <section className="actions">
                 <button

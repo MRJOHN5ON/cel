@@ -219,6 +219,10 @@
   text-overflow: ellipsis;
 }
 
+.mask-editor__refine-error {
+  color: var(--danger, #ff3b30);
+}
+
 .mask-editor__footer {
   display: flex;
   align-items: center;
