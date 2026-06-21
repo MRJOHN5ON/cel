@@ -20,6 +20,40 @@ function clientToImageCoords(clientX, clientY, frameEl, img) {
   ]
 }
 
+function paintColoredMask(canvas, maskImg) {
+  const w = maskImg.naturalWidth
+  const h = maskImg.naturalHeight
+  canvas.width = w
+  canvas.height = h
+
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(maskImg, 0, 0, w, h)
+
+  const imageData = ctx.getImageData(0, 0, w, h)
+  const pixels = imageData.data
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const lum = pixels[i]
+    const t = lum / 255
+
+    if (t >= 0.5) {
+      const strength = ((t - 0.5) / 0.5) * 0.72
+      pixels[i] = 34
+      pixels[i + 1] = 197
+      pixels[i + 2] = 94
+      pixels[i + 3] = Math.round(strength * 255)
+    } else {
+      const strength = ((0.5 - t) / 0.5) * 0.58
+      pixels[i] = 239
+      pixels[i + 1] = 68
+      pixels[i + 2] = 68
+      pixels[i + 3] = Math.round(strength * 255)
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+}
+
 export default function SamPointPicker({
   imageUrl,
   file,
@@ -36,6 +70,7 @@ export default function SamPointPicker({
   const [error, setError] = useState(null)
   const imgRef = useRef(null)
   const frameRef = useRef(null)
+  const maskCanvasRef = useRef(null)
   const maskUrlRef = useRef(null)
   const previewAbortRef = useRef(null)
   const previewDebounceRef = useRef(null)
@@ -108,6 +143,19 @@ export default function SamPointPicker({
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current)
     }
   }, [expanded, file, points, fetchLiveMask, revokeMask])
+
+  useEffect(() => {
+    const canvas = maskCanvasRef.current
+    if (!maskUrl || !canvas) return undefined
+
+    const maskImg = new Image()
+    maskImg.onload = () => paintColoredMask(canvas, maskImg)
+    maskImg.src = maskUrl
+
+    return () => {
+      maskImg.onload = null
+    }
+  }, [maskUrl])
 
   const addPoint = (e) => {
     const img = imgRef.current
@@ -189,8 +237,8 @@ export default function SamPointPicker({
         <div>
           <h3 className="sam-picker__title">Smart Select</h3>
           <p className="sam-picker__hint">
-            Click what to keep (green) and what to remove (red). The green overlay
-            updates as you add points. First use downloads a one-time ~375 MB model.
+            Click what to keep (green dots) and what to remove (red dots).
+            Green tint = kept, red tint = removed. First use downloads a one-time ~375 MB model.
           </p>
         </div>
         <button
@@ -255,15 +303,11 @@ export default function SamPointPicker({
               alt="Click to mark what to keep or remove"
               draggable={false}
             />
-            {maskUrl && (
-              <img
-                className="sam-picker__mask"
-                src={maskUrl}
-                alt=""
-                aria-hidden="true"
-                draggable={false}
-              />
-            )}
+            <canvas
+              ref={maskCanvasRef}
+              className={`sam-picker__mask${maskUrl ? ' sam-picker__mask--visible' : ''}`}
+              aria-hidden="true"
+            />
             {previewing && (
               <div className="sam-picker__live-badge" aria-live="polite">
                 Updating…

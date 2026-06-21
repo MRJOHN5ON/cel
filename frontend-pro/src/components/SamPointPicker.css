@@ -93,11 +93,14 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
   pointer-events: none;
-  opacity: 0.42;
-  filter: sepia(1) saturate(4) hue-rotate(95deg) brightness(0.95);
-  mix-blend-mode: multiply;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sam-picker__mask--visible {
+  opacity: 1;
 }
 
 .sam-picker__live-badge {
