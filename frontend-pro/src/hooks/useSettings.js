@@ -4,7 +4,7 @@ const STORAGE_KEY = 'cel-settings'
 const LEGACY_STORAGE_KEY = 'rembg-studio-settings'
 
 const DEFAULTS = {
-  model: 'isnet-general-use',
+  model: 'bria-rmbg',
   alphaMatting: true,
   forceAlphaMatting: false,
 }

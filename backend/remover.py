@@ -18,7 +18,7 @@ except ImportError:
 MODELS: dict[str, dict[str, str]] = {
     "isnet-general-use": {
         "name": "ISNet General",
-        "description": "Best for people, hair, and fine edges (recommended)",
+        "description": "Best for people, hair, and fine edges",
     },
     "u2net": {
         "name": "U2Net",
@@ -30,11 +30,11 @@ MODELS: dict[str, dict[str, str]] = {
     },
     "bria-rmbg": {
         "name": "BRIA RMBG 2.0",
-        "description": "Highest quality — slower, ~1 GB model (non-commercial license)",
+        "description": "Highest quality — recommended (slower, ~1 GB model, non-commercial license)",
     },
 }
 
-DEFAULT_MODEL = "isnet-general-use"
+DEFAULT_MODEL = "bria-rmbg"
 LOW_RES_FILE_SIZE_BYTES = 100 * 1024  # 100 KB
 LOW_RES_DIMENSION_PX = 1000
 # Alpha matting scales badly on large images (minutes+). Disable past this size.
