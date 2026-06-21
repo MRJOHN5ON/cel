@@ -309,8 +309,9 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
         ctx.drawImage(overlayCanvasRef.current, sx, sy, srcDim, srcDim, 0, 0, size, size)
       }
 
-      const brushRadiusImg = brushSize / viewScale
-      const brushRadiusMag = brushRadiusImg * MAGNIFIER_PIXEL_RATIO
+      // Match main brush cursor — screen-pixel radius, not image-space scaled by zoom.
+      // Scaling by 1/viewScale made the ring fill the loupe when zoomed out.
+      const brushRadiusMag = brushSize
       const activeTool = toolRef.current
 
       ctx.beginPath()
