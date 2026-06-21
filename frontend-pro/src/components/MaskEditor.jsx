@@ -583,6 +583,11 @@ export default function MaskEditor({
     }
   }, [refreshGuide, updateMagnifier])
 
+  const resetEdgeSliders = useCallback(() => {
+    setFeatherAmount(DEFAULT_FEATHER)
+    setDefringeStrength(DEFAULT_DEFRINGE)
+  }, [])
+
   const undo = useCallback(() => {
     const work = workCanvasRef.current
     if (!work || historyPast.current.length === 0) return
@@ -594,9 +599,10 @@ export default function MaskEditor({
     const prev = historyPast.current.pop()
     ctx.putImageData(prev, 0, 0)
 
+    resetEdgeSliders()
     syncHistoryFlags()
     refreshGuide()
-  }, [refreshGuide, syncHistoryFlags])
+  }, [refreshGuide, resetEdgeSliders, syncHistoryFlags])
 
   const redo = useCallback(() => {
     const work = workCanvasRef.current
@@ -609,9 +615,10 @@ export default function MaskEditor({
     const next = historyFuture.current.pop()
     ctx.putImageData(next, 0, 0)
 
+    resetEdgeSliders()
     syncHistoryFlags()
     refreshGuide()
-  }, [refreshGuide, syncHistoryFlags])
+  }, [refreshGuide, resetEdgeSliders, syncHistoryFlags])
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -780,9 +787,10 @@ export default function MaskEditor({
 
     historyPast.current = []
     historyFuture.current = []
+    resetEdgeSliders()
     syncHistoryFlags()
     refreshGuide()
-  }, [refreshGuide, syncHistoryFlags])
+  }, [refreshGuide, resetEdgeSliders, syncHistoryFlags])
 
   const applyEdgeEffect = useCallback(
     (effect) => {
@@ -929,7 +937,7 @@ export default function MaskEditor({
         <div className="mask-editor__edge-tools">
           <span className="mask-editor__edge-label">Edge finish</span>
           <label className="mask-editor__edge-control">
-            <span>Feather</span>
+            <span>Soften edge</span>
             <input
               type="range"
               min={1}
@@ -944,13 +952,13 @@ export default function MaskEditor({
               className="btn btn--ghost btn--compact"
               onClick={() => applyEdgeEffect('feather')}
               disabled={edgeControlsDisabled}
-              title="Soften hard edges on the cutout"
+              title="Softens the outer edge without eating into the subject"
             >
               Apply
             </button>
           </label>
           <label className="mask-editor__edge-control">
-            <span>Defringe</span>
+            <span>Color spill</span>
             <input
               type="range"
               min={10}
@@ -965,7 +973,7 @@ export default function MaskEditor({
               className="btn btn--ghost btn--compact"
               onClick={() => applyEdgeEffect('defringe')}
               disabled={edgeControlsDisabled}
-              title="Remove background color spill on hair and edges"
+              title="Removes background color bleeding into hair and soft edges"
             >
               Apply
             </button>

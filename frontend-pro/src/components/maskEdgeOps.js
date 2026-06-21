@@ -44,15 +44,10 @@ function boxBlurPass(src, dst, width, height, radius, horizontal) {
   }
 }
 
-function blurAlphaChannel(data, width, height, radius) {
+function blurAlphaChannel(alphas, width, height, radius) {
   const pixelCount = width * height
-  const alphas = new Float32Array(pixelCount)
   const temp = new Float32Array(pixelCount)
   const blurred = new Float32Array(pixelCount)
-
-  for (let i = 0; i < pixelCount; i += 1) {
-    alphas[i] = data[i * 4 + 3]
-  }
 
   const passes = radius <= 2 ? 2 : 3
   let src = alphas
@@ -69,14 +64,37 @@ function blurAlphaChannel(data, width, height, radius) {
 }
 
 export function featherImageData(imageData, radiusPx = 4) {
-  const radius = clamp(Math.round(radiusPx), 1, 24)
+  const radius = clamp(Math.round(radiusPx), 1, 16)
   const { width, height, data } = imageData
-  const blurredAlpha = blurAlphaChannel(data, width, height, radius)
+  const pixelCount = width * height
+  const originalAlpha = new Float32Array(pixelCount)
 
-  for (let i = 0; i < width * height; i += 1) {
+  for (let i = 0; i < pixelCount; i += 1) {
+    originalAlpha[i] = data[i * 4 + 3]
+  }
+
+  const blurredAlpha = blurAlphaChannel(originalAlpha, width, height, radius)
+
+  for (let i = 0; i < pixelCount; i += 1) {
     const idx = i * 4
+    const orig = originalAlpha[i]
+    const blurred = blurredAlpha[i]
+    let newAlpha
+
+    if (orig >= 248) {
+      newAlpha = orig
+    } else if (orig <= 5) {
+      newAlpha = Math.min(blurred, orig)
+    } else if (orig >= 128) {
+      // Subject side — soften outward only, never eat into the cutout.
+      newAlpha = Math.max(orig, blurred)
+    } else {
+      // Background side — extend a soft falloff into transparency.
+      newAlpha = blurred
+    }
+
+    newAlpha = clamp255(newAlpha)
     const oldAlpha = data[idx + 3]
-    const newAlpha = clamp255(blurredAlpha[i])
 
     if (oldAlpha > 0 && newAlpha !== oldAlpha) {
       const scale = newAlpha / oldAlpha
@@ -91,23 +109,27 @@ export function featherImageData(imageData, radiusPx = 4) {
   return imageData
 }
 
-function unmixFromWhite(r, g, b, alpha) {
+function unmixForeground(r, g, b, alpha, bgR, bgG, bgB) {
   const a = alpha / 255
-  if (a <= 0.04) return [r, g, b]
+  if (a <= 0.08) return [r, g, b]
 
   const inv = 1 - a
+  const bgRf = bgR / 255
+  const bgGf = bgG / 255
+  const bgBf = bgB / 255
+
   return [
-    clamp255(((r / 255 - inv) / a) * 255),
-    clamp255(((g / 255 - inv) / a) * 255),
-    clamp255(((b / 255 - inv) / a) * 255),
+    clamp255(((r / 255 - inv * bgRf) / a) * 255),
+    clamp255(((g / 255 - inv * bgGf) / a) * 255),
+    clamp255(((b / 255 - inv * bgBf) / a) * 255),
   ]
 }
 
-function sampleSolidNeighborColor(data, alpha, width, height, x, y, sampleRadius) {
+function estimateBackgroundColor(data, alpha, width, height, x, y, sampleRadius) {
   let sr = 0
   let sg = 0
   let sb = 0
-  let count = 0
+  let weight = 0
 
   for (let dy = -sampleRadius; dy <= sampleRadius; dy += 1) {
     for (let dx = -sampleRadius; dx <= sampleRadius; dx += 1) {
@@ -116,17 +138,53 @@ function sampleSolidNeighborColor(data, alpha, width, height, x, y, sampleRadius
       if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
 
       const ni = ny * width + nx
-      if (alpha[ni] < 240) continue
+      const na = alpha[ni]
+      if (na > 12) continue
 
+      const dist = Math.hypot(dx, dy)
+      if (dist > sampleRadius) continue
+
+      const w = 1 / (1 + dist)
       const nidx = ni * 4
-      sr += data[nidx]
-      sg += data[nidx + 1]
-      sb += data[nidx + 2]
-      count += 1
+      sr += data[nidx] * w
+      sg += data[nidx + 1] * w
+      sb += data[nidx + 2] * w
+      weight += w
     }
   }
 
-  if (count === 0) return null
+  if (weight <= 0) return null
+  return [sr / weight, sg / weight, sb / weight]
+}
+
+function estimateGlobalBackground(data, alpha, width, height) {
+  const samples = [
+    [0, 0],
+    [width - 1, 0],
+    [0, height - 1],
+    [width - 1, height - 1],
+    [Math.floor(width / 2), 0],
+    [Math.floor(width / 2), height - 1],
+    [0, Math.floor(height / 2)],
+    [width - 1, Math.floor(height / 2)],
+  ]
+
+  let sr = 0
+  let sg = 0
+  let sb = 0
+  let count = 0
+
+  for (const [x, y] of samples) {
+    const i = y * width + x
+    if (alpha[i] > 20) continue
+    const idx = i * 4
+    sr += data[idx]
+    sg += data[idx + 1]
+    sb += data[idx + 2]
+    count += 1
+  }
+
+  if (count === 0) return [255, 255, 255]
   return [sr / count, sg / count, sb / count]
 }
 
@@ -141,36 +199,35 @@ export function defringeImageData(imageData, strength = 0.65) {
     alpha[i] = data[i * 4 + 3]
   }
 
+  const globalBg = estimateGlobalBackground(data, alpha, width, height)
+
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const i = y * width + x
       const a = alpha[i]
-      if (a >= 252 || a <= 4) continue
+      if (a >= 252 || a <= 12) continue
 
       const idx = i * 4
-      const fringe = 1 - Math.abs(a - 128) / 128
+      const localBg = estimateBackgroundColor(data, alpha, width, height, x, y, 10)
+      const [bgR, bgG, bgB] = localBg ?? globalBg
+
+      const fringe = Math.min(1, Math.min(a, 255 - a) / 64)
       const mix = amount * fringe
       if (mix <= 0.01) continue
 
-      const neighbor = sampleSolidNeighborColor(data, alpha, width, height, x, y, 4)
-      let targetR
-      let targetG
-      let targetB
+      const [fr, fg, fb] = unmixForeground(
+        data[idx],
+        data[idx + 1],
+        data[idx + 2],
+        a,
+        bgR,
+        bgG,
+        bgB,
+      )
 
-      if (neighbor) {
-        ;[targetR, targetG, targetB] = neighbor
-      } else {
-        ;[targetR, targetG, targetB] = unmixFromWhite(
-          data[idx],
-          data[idx + 1],
-          data[idx + 2],
-          a,
-        )
-      }
-
-      out[idx] = clamp255(data[idx] * (1 - mix) + targetR * mix)
-      out[idx + 1] = clamp255(data[idx + 1] * (1 - mix) + targetG * mix)
-      out[idx + 2] = clamp255(data[idx + 2] * (1 - mix) + targetB * mix)
+      out[idx] = clamp255(data[idx] * (1 - mix) + fr * mix)
+      out[idx + 1] = clamp255(data[idx + 1] * (1 - mix) + fg * mix)
+      out[idx + 2] = clamp255(data[idx + 2] * (1 - mix) + fb * mix)
     }
   }
 

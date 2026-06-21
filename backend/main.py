@@ -133,9 +133,9 @@ def app_config() -> dict:
 async def remove_bg(
     file: UploadFile = File(...),
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
-    post_process_mask: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
     format: str = Query("png"),
     jpg_background: str = Query("#ffffff"),
@@ -193,9 +193,9 @@ async def remove_bg(
 async def remove_bg_json(
     file: UploadFile = File(...),
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
-    post_process_mask: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
 ) -> JSONResponse:
     """Return base64 PNG + metadata for in-browser preview."""
@@ -234,9 +234,9 @@ async def remove_bg_json(
 async def remove_bg_job(
     file: UploadFile = File(...),
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
-    post_process_mask: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
 ) -> JSONResponse:
     """Start background removal and poll GET /api/jobs/{id} for progress."""
@@ -318,9 +318,9 @@ async def segment_sam(
 async def segment_sam_apply(
     file: UploadFile = File(...),
     prompt: str = Form(...),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
-    post_process_mask: bool = Query(False),
+    post_process_mask: bool = Query(True),
 ) -> JSONResponse:
     """SAM segment from prompts, then build a cutout via mask refine."""
     import base64
@@ -365,9 +365,9 @@ async def segment_sam_apply(
 async def refine_mask(
     file: UploadFile = File(...),
     mask: UploadFile = File(...),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
-    post_process_mask: bool = Query(False),
+    post_process_mask: bool = Query(True),
 ) -> JSONResponse:
     """Refine edges around a user-edited alpha mask."""
     import base64
@@ -402,9 +402,9 @@ async def refine_mask(
 async def batch_remove(
     files: Annotated[list[UploadFile], File(...)],
     model: str = Query(DEFAULT_MODEL),
-    alpha_matting: bool = Query(True),
+    alpha_matting: bool = Query(False),
     force_alpha_matting: bool = Query(False),
-    post_process_mask: bool = Query(False),
+    post_process_mask: bool = Query(True),
     trim: bool = Query(False),
 ) -> StreamingResponse:
     if not files:

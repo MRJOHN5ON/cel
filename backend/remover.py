@@ -105,9 +105,9 @@ def remove_background(
     data: bytes,
     *,
     model: str = DEFAULT_MODEL,
-    alpha_matting: bool = True,
+    alpha_matting: bool = False,
     force_alpha_matting: bool = False,
-    post_process_mask: bool = False,
+    post_process_mask: bool = True,
     trim: bool = False,
     progress_callback: Any = None,
 ) -> tuple[bytes, dict[str, Any]]:
@@ -258,9 +258,9 @@ def refine_with_mask(
     data: bytes,
     mask_data: bytes,
     *,
-    alpha_matting: bool = True,
+    alpha_matting: bool = False,
     force_alpha_matting: bool = False,
-    post_process_mask: bool = False,
+    post_process_mask: bool = True,
     progress_callback: Any = None,
 ) -> tuple[bytes, dict[str, Any]]:
     """Refine edges around a user-edited alpha mask using matting + optional cleanup."""
