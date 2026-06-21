@@ -92,9 +92,11 @@ After background removal, click **Edit Mask** to open the precision editor:
 
 > **Important:** Use the installer from **python.org**, not Xcode Command Line Tools alone. The python.org installer adds `python3` at `/Library/Frameworks/Python.framework/Versions/3.x/bin/python3`.
 
+**Build from source only** — clone `main`, build locally. We don't publish GitHub releases (no pre-built downloads). Fixes and features land on `main` via issues and PRs.
+
 ## Install Cel Pro.app
 
-For you or anyone downloading a release zip or building locally:
+For you or anyone setting up on a Mac:
 
 ### 1. Install Python (one time per Mac)
 
@@ -102,11 +104,7 @@ For you or anyone downloading a release zip or building locally:
 2. Run the installer (standard options are fine)
 3. Confirm in Terminal: `python3 --version` → should show 3.10+
 
-### 2. Get the app
-
-**From a GitHub release** — download the zip, unzip, and move `Cel Pro.app` to Applications.
-
-**Or build yourself:**
+### 2. Build the app
 
 ```bash
 git clone https://github.com/MRJOHN5ON/cel.git
@@ -118,7 +116,7 @@ cp -R "dist/Cel Pro.app" /Applications/
 
 ### 3. One-time dependency setup
 
-Double-click **`Install Cel Pro.command`** (sits next to `Cel Pro.app` in `dist/` after a build, or in the release zip).
+Double-click **`Install Cel Pro.command`** (in `dist/` after a build).
 
 Or from Terminal:
 
@@ -210,7 +208,7 @@ After building, run **`Install Cel Pro.command`** once, then open the app.
 
 Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
 
-> **Why no bundled Python?** Earlier releases tried to embed python.org’s framework inside the app (~3 GB, fragile on other Macs). Requiring system Python + a one-time setup is more reliable for family and friends.
+> **Why no GitHub releases?** There's no signed/notarized `.app` to ship. Releases were just tags + notes that fell behind `main` anyway. Clone the repo, build on your Mac, and track changes via [issues](https://github.com/MRJOHN5ON/cel/issues) and PRs.
 
 ## Project structure
 
