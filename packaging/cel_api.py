@@ -5,6 +5,38 @@ from __future__ import annotations
 import base64
 import os
 
+APP_SUPPORT = os.path.expanduser("~/Library/Application Support/Cel")
+LAST_SAVE_DIR_FILE = os.path.join(APP_SUPPORT, "last_save_directory")
+
+
+def _default_save_directory() -> str:
+    downloads = os.path.expanduser("~/Downloads")
+    if not os.path.isdir(downloads):
+        downloads = os.path.expanduser("~")
+
+    try:
+        with open(LAST_SAVE_DIR_FILE, encoding="utf-8") as handle:
+            last = handle.read().strip()
+        if last and os.path.isdir(last):
+            return last
+    except OSError:
+        pass
+
+    return downloads
+
+
+def _remember_save_directory(path: str) -> None:
+    directory = os.path.dirname(path)
+    if not directory or not os.path.isdir(directory):
+        return
+
+    try:
+        os.makedirs(APP_SUPPORT, exist_ok=True)
+        with open(LAST_SAVE_DIR_FILE, "w", encoding="utf-8") as handle:
+            handle.write(directory)
+    except OSError:
+        pass
+
 
 class CelApi:
     """JS API: window.pywebview.api.*"""
@@ -32,14 +64,12 @@ class CelApi:
         else:
             file_types = ("PNG images (*.png)", "All files (*.*)")
 
-        downloads = os.path.expanduser("~/Downloads")
-        if not os.path.isdir(downloads):
-            downloads = os.path.expanduser("~")
+        save_directory = _default_save_directory()
 
         try:
             result = window.create_file_dialog(
                 FileDialog.SAVE,
-                directory=downloads,
+                directory=save_directory,
                 save_filename=suggested_name,
                 file_types=file_types,
             )
@@ -61,5 +91,6 @@ class CelApi:
             print(f"Save write failed: {exc}", flush=True)
             return {"ok": False, "error": f"Could not write file: {exc}"}
 
+        _remember_save_directory(path)
         print(f"Saved result to {path}", flush=True)
         return {"ok": True, "path": path}
