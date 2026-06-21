@@ -395,7 +395,7 @@ export default function App() {
   const previewResultH = metadata?.output_height ?? previewSourceH
   const currentModelName =
     metadata?.model === 'sam'
-      ? 'SAM'
+      ? 'Smart Select'
       : models.find((m) => m.id === metadata?.model)?.name ?? metadata?.model
 
   const rerun = () => {
