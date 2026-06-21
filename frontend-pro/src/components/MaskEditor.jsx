@@ -11,15 +11,18 @@ import {
   IconStartOver,
 } from './Icons'
 import './MaskEditor.css'
-import { defringeImageData, featherImageData } from './maskEdgeOps'
 
 const TOOLS = { erase: 'erase', restore: 'restore', pan: 'pan' }
 
 const MAX_HISTORY = 20
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 8
-const DEFAULT_FEATHER = 4
-const DEFAULT_DEFRINGE = 65
+const ZOOM_SLIDER_MIN = Math.round(MIN_ZOOM * 100)
+const ZOOM_SLIDER_MAX = Math.round(MAX_ZOOM * 100)
+
+function clampZoom(value) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
+}
 const MAGNIFIER_SIZE = 128
 const MAGNIFIER_PIXEL_RATIO = 4
 // Cap ring size so it stays readable when zoomed far out (low viewScale).
@@ -131,9 +134,6 @@ export default function MaskEditor({
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [edgeWorking, setEdgeWorking] = useState(false)
-  const [featherAmount, setFeatherAmount] = useState(DEFAULT_FEATHER)
-  const [defringeStrength, setDefringeStrength] = useState(DEFAULT_DEFRINGE)
   const [cursor, setCursor] = useState(null)
   const [cursorImage, setCursorImage] = useState(null)
   const [spacePan, setSpacePan] = useState(false)
@@ -583,11 +583,6 @@ export default function MaskEditor({
     }
   }, [refreshGuide, updateMagnifier])
 
-  const resetEdgeSliders = useCallback(() => {
-    setFeatherAmount(DEFAULT_FEATHER)
-    setDefringeStrength(DEFAULT_DEFRINGE)
-  }, [])
-
   const undo = useCallback(() => {
     const work = workCanvasRef.current
     if (!work || historyPast.current.length === 0) return
@@ -599,10 +594,9 @@ export default function MaskEditor({
     const prev = historyPast.current.pop()
     ctx.putImageData(prev, 0, 0)
 
-    resetEdgeSliders()
     syncHistoryFlags()
     refreshGuide()
-  }, [refreshGuide, resetEdgeSliders, syncHistoryFlags])
+  }, [refreshGuide, syncHistoryFlags])
 
   const redo = useCallback(() => {
     const work = workCanvasRef.current
@@ -615,10 +609,9 @@ export default function MaskEditor({
     const next = historyFuture.current.pop()
     ctx.putImageData(next, 0, 0)
 
-    resetEdgeSliders()
     syncHistoryFlags()
     refreshGuide()
-  }, [refreshGuide, resetEdgeSliders, syncHistoryFlags])
+  }, [refreshGuide, syncHistoryFlags])
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -736,7 +729,7 @@ export default function MaskEditor({
   const onWheel = (e) => {
     e.preventDefault()
     const factor = e.deltaY < 0 ? 1.1 : 0.9
-    setZoom((z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z * factor)))
+    setZoom((z) => clampZoom(z * factor))
   }
 
   const handleDone = async () => {
@@ -787,49 +780,9 @@ export default function MaskEditor({
 
     historyPast.current = []
     historyFuture.current = []
-    resetEdgeSliders()
     syncHistoryFlags()
     refreshGuide()
-  }, [refreshGuide, resetEdgeSliders, syncHistoryFlags])
-
-  const applyEdgeEffect = useCallback(
-    (effect) => {
-      const work = workCanvasRef.current
-      if (!work || saving || edgeWorking) return
-
-      pushHistorySnapshot()
-      setEdgeWorking(true)
-
-      try {
-        const ctx = work.getContext('2d', { willReadFrequently: true })
-        const imageData = ctx.getImageData(0, 0, work.width, work.height)
-
-        if (effect === 'feather') {
-          featherImageData(imageData, featherAmount)
-        } else {
-          defringeImageData(imageData, defringeStrength / 100)
-        }
-
-        ctx.putImageData(imageData, 0, 0)
-        painting.current = false
-        lastPoint.current = null
-        strokeSnapshot.current = null
-        refreshGuide()
-      } finally {
-        setEdgeWorking(false)
-      }
-    },
-    [
-      defringeStrength,
-      edgeWorking,
-      featherAmount,
-      pushHistorySnapshot,
-      refreshGuide,
-      saving,
-    ],
-  )
-
-  const edgeControlsDisabled = !ready || saving || edgeWorking
+  }, [refreshGuide, syncHistoryFlags])
 
   // brushSize is the brush radius in screen pixels (diameter = 2× brushSize)
   const brushCursorSize = brushSize * 2
@@ -933,54 +886,7 @@ export default function MaskEditor({
         </div>
       </div>
 
-      {ready && (
-        <div className="mask-editor__edge-tools">
-          <span className="mask-editor__edge-label">Edge finish</span>
-          <label className="mask-editor__edge-control">
-            <span>Soften edge</span>
-            <input
-              type="range"
-              min={1}
-              max={16}
-              value={featherAmount}
-              onChange={(e) => setFeatherAmount(Number(e.target.value))}
-              disabled={edgeControlsDisabled}
-            />
-            <span className="mask-editor__slider-val">{featherAmount}px</span>
-            <button
-              type="button"
-              className="btn btn--ghost btn--compact"
-              onClick={() => applyEdgeEffect('feather')}
-              disabled={edgeControlsDisabled}
-              title="Softens the outer edge without eating into the subject"
-            >
-              Apply
-            </button>
-          </label>
-          <label className="mask-editor__edge-control">
-            <span>Color spill</span>
-            <input
-              type="range"
-              min={10}
-              max={100}
-              value={defringeStrength}
-              onChange={(e) => setDefringeStrength(Number(e.target.value))}
-              disabled={edgeControlsDisabled}
-            />
-            <span className="mask-editor__slider-val">{defringeStrength}%</span>
-            <button
-              type="button"
-              className="btn btn--ghost btn--compact"
-              onClick={() => applyEdgeEffect('defringe')}
-              disabled={edgeControlsDisabled}
-              title="Removes background color bleeding into hair and soft edges"
-            >
-              Apply
-            </button>
-          </label>
-        </div>
-      )}
-
+      <div className="mask-editor__workspace-row">
       <div className="mask-editor__workspace">
         <div
           ref={containerRef}
@@ -1033,16 +939,39 @@ export default function MaskEditor({
       </div>
 
       {ready && (
+        <aside className="mask-editor__zoom-rail" aria-label="Zoom">
+          <span className="mask-editor__zoom-label">Zoom</span>
+          <input
+            type="range"
+            className="mask-editor__zoom-slider"
+            min={ZOOM_SLIDER_MIN}
+            max={ZOOM_SLIDER_MAX}
+            value={Math.round(zoom * 100)}
+            onChange={(e) => setZoom(clampZoom(Number(e.target.value) / 100))}
+            aria-valuetext={`${Math.round(zoom * 100)} percent`}
+          />
+          <span className="mask-editor__zoom-value">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            className="btn btn--ghost btn--compact"
+            onClick={resetView}
+            title="Reset zoom to 100%"
+          >
+            100%
+          </button>
+        </aside>
+      )}
+      </div>
+
+      {ready && (
         <div className="mask-editor__status" aria-live="polite">
-          {edgeWorking
-            ? 'Applying edge finish…'
-            : spacePan
+          {spacePan
             ? 'Space — drag to pan'
             : tool === TOOLS.pan
-              ? 'Drag to pan · scroll to zoom · Space+drag also works'
+              ? 'Drag to pan · scroll or use zoom slider · Space+drag also works'
               : tool === TOOLS.restore
-                ? 'Restore paints back the original photo · Space+drag to pan'
-                : 'Erase removes subject · Space+drag to pan · scroll to zoom'}
+                ? 'Restore paints back the original photo · scroll or zoom slider to zoom'
+                : 'Erase removes subject · scroll or zoom slider to zoom'}
           {showRemoved && ' · Guide on'}
           {showMagnifier && ' · Detail view active'}
           {' · '}{imgSize.w}×{imgSize.h}
@@ -1054,14 +983,14 @@ export default function MaskEditor({
           type="button"
           className="btn btn--ghost"
           onClick={startOver}
-          disabled={!canUndo || saving || edgeWorking}
+          disabled={!canUndo || saving}
           title="Discard all edits and restore the original cutout"
         >
           <IconStartOver size={14} />
           Start Over
         </button>
         <div className="mask-editor__footer-actions">
-        <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={saving || edgeWorking}>
+        <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={saving}>
           <IconClose size={14} />
           Cancel
         </button>
@@ -1069,7 +998,7 @@ export default function MaskEditor({
           type="button"
           className="btn btn--primary"
           onClick={handleDone}
-          disabled={!ready || saving || edgeWorking}
+          disabled={!ready || saving}
         >
           <IconCheck size={14} />
           {saving ? 'Applying…' : 'Done Editing'}
