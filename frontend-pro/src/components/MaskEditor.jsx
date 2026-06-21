@@ -69,13 +69,15 @@ function paintBrush({ workData, originalData, cx, cy, radius, hardness, tool }) 
       const idx = (y * width + x) * 4
 
       if (tool === TOOLS.erase) {
-        const nextAlpha = Math.round(data[idx + 3] * (1 - strength))
-        data[idx + 3] = nextAlpha
-        if (nextAlpha === 0) {
-          data[idx] = 0
-          data[idx + 1] = 0
-          data[idx + 2] = 0
+        const prevAlpha = data[idx + 3]
+        const nextAlpha = Math.round(prevAlpha * (1 - strength))
+        if (prevAlpha > 0) {
+          const scale = nextAlpha / prevAlpha
+          data[idx] = Math.round(data[idx] * scale)
+          data[idx + 1] = Math.round(data[idx + 1] * scale)
+          data[idx + 2] = Math.round(data[idx + 2] * scale)
         }
+        data[idx + 3] = nextAlpha
       } else if (tool === TOOLS.restore) {
         const blend = strength
         data[idx] = Math.round(data[idx] * (1 - blend) + orig[idx] * blend)
@@ -103,7 +105,6 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
   const displayRef = useRef(null)
   const magnifierRef = useRef(null)
   const workCanvasRef = useRef(null)
-  const magnifierSourceRef = useRef(null)
   const overlayCanvasRef = useRef(null)
   const originalDataRef = useRef(null)
   const initialResultRef = useRef(null)
@@ -254,22 +255,6 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
       const work = workCanvasRef.current
       if (!magnifier || !work || imgX == null || imgY == null) return
 
-      let source = work
-      const liveStroke = painting.current && strokeSnapshot.current
-      if (liveStroke) {
-        let preview = magnifierSourceRef.current
-        if (!preview || preview.width !== work.width || preview.height !== work.height) {
-          preview = document.createElement('canvas')
-          preview.width = work.width
-          preview.height = work.height
-          magnifierSourceRef.current = preview
-        }
-        preview
-          .getContext('2d', { willReadFrequently: true })
-          .putImageData(strokeSnapshot.current, 0, 0)
-        source = preview
-      }
-
       const ctx = magnifier.getContext('2d')
       const dpr = window.devicePixelRatio || 1
       const size = MAGNIFIER_SIZE
@@ -301,13 +286,9 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
         }
       }
 
-      ctx.drawImage(source, sx, sy, srcDim, srcDim, 0, 0, size, size)
+      ctx.drawImage(work, sx, sy, srcDim, srcDim, 0, 0, size, size)
 
-      if (
-        showRemovedRef.current &&
-        overlayCanvasRef.current &&
-        source === work
-      ) {
+      if (showRemovedRef.current && overlayCanvasRef.current && !painting.current) {
         ctx.drawImage(overlayCanvasRef.current, sx, sy, srcDim, srcDim, 0, 0, size, size)
       }
 
@@ -486,7 +467,7 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
       magnifierVisibleRef.current = visible
       setMagnifierVisible(visible)
 
-      if (visible && !painting.current) {
+      if (visible) {
         updateMagnifier(pt.x, pt.y, pt.scale)
       }
 
@@ -537,10 +518,6 @@ export default function MaskEditor({ resultUrl, originalUrl, onDone, onCancel })
 
       const ctx = work.getContext('2d', { willReadFrequently: true })
       ctx.putImageData(workData, 0, 0)
-
-      if (magnifierVisibleRef.current) {
-        updateMagnifier(pt.x, pt.y, pt.scale)
-      }
 
       if (!rafRef.current) {
         rafRef.current = requestAnimationFrame(() => {
