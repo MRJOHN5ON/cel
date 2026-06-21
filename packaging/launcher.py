@@ -121,6 +121,7 @@ def run_server(port: int) -> None:
             port=port,
             log_level="info",
             access_log=True,
+            timeout_graceful_shutdown=1,
         )
         server = uvicorn.Server(config)
         server.run()
@@ -200,12 +201,19 @@ def main() -> None:
     window.events.shown += on_shown
     window.events.loaded += on_loaded
 
+    def on_closing() -> None:
+        print("Cel quitting", flush=True)
+        os._exit(0)
+
+    window.events.closing += on_closing
+
     def on_gui_ready() -> None:
         apply_cel_bundle_context()
         schedule_menu_rename(APP_NAME)
 
     webview.start(on_gui_ready)
     print("Cel closed", flush=True)
+    os._exit(0)
 
 
 if __name__ == "__main__":
