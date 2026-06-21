@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="./media/icon/app_icon.png" alt="Cel app icon" width="120" />
+  <img src="./media/icon/app_icon.png" alt="Cel Pro app icon" width="120" />
 </p>
 
-<h1 align="center">Cel</h1>
+<h1 align="center">Cel Pro</h1>
 
 <p align="center">
-  <strong>Local background removal for macOS</strong><br>
-  Drop a photo · get a transparent PNG · nothing leaves your Mac
+  <strong>Local background removal + precision mask editing for macOS</strong><br>
+  Drop a photo · refine the cutout · save a transparent PNG · nothing leaves your Mac
 </p>
 
 <p align="center">
@@ -23,18 +23,53 @@
 
 ## What it is
 
-Cel removes backgrounds from photos **entirely on your Mac** — no cloud APIs, no credits, no subscription. Drag in a portrait, product shot, or batch of images and save full-resolution transparent PNGs.
+**Cel Pro** removes backgrounds from photos **entirely on your Mac** — no cloud APIs, no credits, no subscription. Drag in a portrait, product shot, or batch of images, then **edit the mask** with erase/restore brushes, undo/redo, and a detail magnifier for fine edge work.
 
 Named after the animation **cel** — a transparent layer with your subject on it. Powered by [rembg](https://github.com/danielgatis/rembg) running locally.
 
 **Also on Android:** [Cel for Android](https://github.com/MRJOHN5ON/cel-android) — sideload APK on [v1.5.3](https://github.com/MRJOHN5ON/cel-android/releases/tag/v1.5.3).
 
-**No pre-built downloads.** Clone the repo and run from source or build `Cel.app` yourself on your Mac. Public releases may come later once the app is signed and notarized.
+**No pre-built downloads.** Clone the repo and run from source or build `Cel Pro.app` yourself on your Mac. Public releases may come later once the app is signed and notarized.
+
+## What's new in v1.1 — Cel Pro
+
+This release adds a full **mask editor** on top of the existing local background removal pipeline. Cel Pro is now the default app (`./start.sh` and `./scripts/build_mac_app.sh`).
+
+**New in this release:**
+
+- **Edit Mask** — open a dedicated editor after background removal to fix edges by hand
+- **Erase & Restore brushes** — adjustable size (4–200) and hardness; restore paints from your **original photo**
+- **Detail magnifier** — 4× floating loupe when brush size is 5 or smaller, with live erase preview and crosshair
+- **Pan & zoom** — scroll to zoom, drag to pan, Space+drag anywhere
+- **Undo / redo** — per-stroke history (⌘Z / ⌘⇧Z)
+- **Start Over** — one-click reset of all mask edits before saving
+- **Guide overlay** — blue shows AI-removed background, red shows your manual erasures
+- **Dark mode** — full editor UI matches system theme
+
+<p align="center">
+  <img src="docs/screenshots/pro-editor.png" alt="Cel Pro v1.1 — mask editor with erase brush and detail magnifier" width="720" />
+</p>
+
+<p align="center"><em>Cel Pro v1.1 · BRIA RMBG 2.0 · brush size 4 · detail magnifier active</em></p>
+
+## Pro mask editor
+
+After background removal, click **Edit Mask** to open the precision editor:
+
+| Feature | What it does |
+|---------|----------------|
+| **Erase brush** | Paint away leftover subject or halo |
+| **Restore brush** | Paint back from the **original photo** (not just the AI snapshot) |
+| **Detail magnifier** | 4× loupe when brush size ≤ 5 — live erase preview with crosshair |
+| **Pan & zoom** | Scroll to zoom, drag to pan, or hold Space + drag |
+| **Undo / redo** | Full stroke history (⌘Z / ⌘⇧Z) |
+| **Start Over** | Discard all edits and restore the original cutout |
+| **Guide overlay** | Blue = AI-removed background · red = your erasures |
 
 ## Examples
 
 <p align="center">
-  <img src="docs/screenshots/example-before-after.png" alt="Before and after — side-by-side in Cel" width="720" />
+  <img src="docs/screenshots/example-before-after.png" alt="Before and after — side-by-side in Cel Pro" width="720" />
 </p>
 
 <p align="center">
@@ -42,11 +77,11 @@ Named after the animation **cel** — a transparent layer with your subject on i
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home-light.png" alt="Cel home screen — light mode" width="720" />
+  <img src="docs/screenshots/home-light.png" alt="Cel Pro home screen — light mode" width="720" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/home-dark.png" alt="Cel home screen — dark mode" width="720" />
+  <img src="docs/screenshots/home-dark.png" alt="Cel Pro home screen — dark mode" width="720" />
 </p>
 
 ## Quick start (dev mode)
@@ -85,20 +120,23 @@ Switch models from the dropdown before processing, or **Try another model** on t
 2. **Pick your model** — ISNet General is the default and best for people, hair, and fine edges
 3. **Remove Background** — wait for the progress bar (large images can take a minute or two)
 4. **Preview** — compare side-by-side or with the slider
-5. **Save Result** — exports a full-resolution transparent PNG via the macOS save panel
+5. **Edit Mask** *(optional)* — fine-tune edges with erase/restore brushes
+6. **Save Result** — exports a full-resolution transparent PNG via the macOS save panel
 
 **Batch mode:** click **Batch** in the header to process multiple images and download a ZIP.
 
 ## Tips & tricks
 
 - **Portraits & hair** — keep **ISNet General** + **Alpha matting** on (defaults). That's the sweet spot for people.
+- **Fine edge cleanup** — shrink the brush to **size 4–5** to enable the **Detail** magnifier for precision work.
+- **Restore, don't erase** — use **Restore** to paint back stray background removal; it samples the original photo.
 - **Large images** — alpha matting auto-turns off above ~2.5 MP to save time. You'll see a warning; you can force it on if you need wispy edge detail and don't mind waiting.
 - **Try another model** — **BRIA RMBG 2.0** for max quality (slower, ~1 GB RAM); **U2Net Human** for full-body portraits; **U2Net** for objects/products
-- **Paste from clipboard** — copy an image anywhere, then paste (Cmd+V) into Cel. Handy for screenshots.
-- **Dark mode** — toggle in the header; Cel remembers your choice.
-- **Low-res warning** — if the source looks tiny or heavily compressed, Cel flags it before you waste time on a bad export.
+- **Paste from clipboard** — copy an image anywhere, then paste (⌘V) into Cel Pro. Handy for screenshots.
+- **Dark mode** — toggle in the header; Cel Pro remembers your choice.
+- **Low-res warning** — if the source looks tiny or heavily compressed, Cel Pro flags it before you waste time on a bad export.
 
-## Build Cel.app (local only)
+## Build Cel Pro.app (local only)
 
 Build a self-contained native app on **your** Mac:
 
@@ -107,22 +145,25 @@ chmod +x scripts/build_mac_app.sh
 ./scripts/build_mac_app.sh
 ```
 
-Output: `dist/Cel.app` — native window, bundled Python + UI + all models (~3 GB with BRIA).
+Output: `dist/Cel Pro.app` — native window, bundled Python + Pro UI + all models (~3 GB with BRIA).
 
 - Built for the chip type of the machine you build on (`arm64` = Apple Silicon)
 - Requires [python.org](https://www.python.org/downloads/macos/) Python 3.10 installed on the build machine
 - **Unsigned** — fine for personal use on the Mac you built it on; distributing to others needs Apple Developer signing + notarization ($99/year)
 
-Logs: `~/Library/Logs/Cel/cel.log`
+Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
 
 ## Project structure
 
 ```
-├── backend/          # FastAPI + rembg
-├── frontend/         # React + Vite
-├── packaging/        # Cel.app launcher & native bridges
+├── backend/          # FastAPI + rembg (shared)
+├── frontend-pro/     # Cel Pro UI + mask editor
+├── frontend/         # Classic UI (legacy, no mask editor)
+├── packaging-pro/    # Cel Pro.app launcher & native bridges
+├── packaging/        # Classic Cel.app packaging (legacy)
 ├── scripts/          # build_mac_app.sh, download_models.py
-└── start.sh
+├── start.sh          # Dev mode — Cel Pro (default)
+└── start-classic.sh  # Dev mode — classic UI only
 ```
 
 ## API
@@ -147,6 +188,6 @@ Logs: `~/Library/Logs/Cel/cel.log`
 
 ## License
 
-Cel is MIT licensed — see [LICENSE](LICENSE).
+Cel Pro is MIT licensed — see [LICENSE](LICENSE).
 
 Third-party libraries and ML models are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
