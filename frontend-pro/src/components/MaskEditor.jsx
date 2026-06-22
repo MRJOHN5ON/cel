@@ -276,7 +276,16 @@ export default function MaskEditor({
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       }
 
-      const srcDim = size / MAGNIFIER_PIXEL_RATIO
+      const brushRadiusImg = brushSize / viewScale
+      const magnifierZoom = Math.max(
+        1,
+        Math.min(
+          MAGNIFIER_PIXEL_RATIO,
+          MAGNIFIER_MAX_BRUSH_RADIUS / brushRadiusImg,
+        ),
+      )
+      const brushRadiusMag = brushRadiusImg * magnifierZoom
+      const srcDim = size / magnifierZoom
       const sx = imgX - srcDim / 2
       const sy = imgY - srcDim / 2
 
@@ -303,9 +312,7 @@ export default function MaskEditor({
         ctx.drawImage(overlayCanvasRef.current, sx, sy, srcDim, srcDim, 0, 0, size, size)
       }
 
-      // Loupe shows image at MAGNIFIER_PIXEL_RATIO×; scale brush from image space.
-      const brushRadiusImg = brushSize / viewScale
-      const brushRadiusMag = brushRadiusImg * MAGNIFIER_PIXEL_RATIO
+      // Loupe shows the brush at an adaptive zoom so the ring can stay centered.
       const activeTool = toolRef.current
 
       ctx.beginPath()
@@ -930,7 +937,7 @@ export default function MaskEditor({
           <div className="mask-editor__magnifier-loupe checkerboard">
             <canvas ref={magnifierRef} className="mask-editor__magnifier-canvas" />
           </div>
-          <span className="mask-editor__magnifier-meta">{MAGNIFIER_PIXEL_RATIO}× zoom</span>
+          <span className="mask-editor__magnifier-meta">4× zoom</span>
         </aside>
       </div>
 
