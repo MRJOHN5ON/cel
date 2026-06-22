@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import shutil
+import ssl
+import subprocess
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -27,6 +30,65 @@ MIN_BYTES = {
 }
 
 
+def ssl_context() -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    try:
+        import certifi
+
+        ctx.load_verify_locations(certifi.where())
+    except ImportError:
+        pass
+    return ctx
+
+
+def is_ssl_error(exc: BaseException) -> bool:
+    if isinstance(exc, ssl.SSLError):
+        return True
+    if isinstance(exc, urllib.error.URLError) and isinstance(exc.reason, ssl.SSLError):
+        return True
+    message = str(exc)
+    return "CERTIFICATE_VERIFY_FAILED" in message or "certificate verify failed" in message.lower()
+
+
+def ssl_help_message() -> str:
+    return (
+        "SSL certificates are missing for this Python install.\n"
+        "  Fix (pick one):\n"
+        "    • Applications → Python 3.x → Install Certificates.command\n"
+        "    • Or rerun the build — this script will retry downloads with curl"
+    )
+
+
+def download_with_curl(url: str, dest: Path) -> None:
+    curl = shutil.which("curl")
+    if not curl:
+        raise RuntimeError("curl not found")
+
+    result = subprocess.run(
+        [curl, "-fsSL", "--retry", "3", "-o", str(dest), url],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(detail or f"curl failed (exit {result.returncode})")
+
+
+def download(url: str, dest: Path) -> None:
+    request = urllib.request.Request(url, headers={"User-Agent": "cel-download-models/1.0"})
+    try:
+        with urllib.request.urlopen(request, context=ssl_context()) as response, dest.open("wb") as out:
+            shutil.copyfileobj(response, out)
+    except Exception as exc:
+        if not is_ssl_error(exc):
+            raise
+        if shutil.which("curl"):
+            print("  ⚠ Python SSL failed — retrying with curl ...")
+            download_with_curl(url, dest)
+            return
+        raise RuntimeError(ssl_help_message()) from exc
+
+
 def copy_or_download(name: str, url: str) -> None:
     dest = OUT_DIR / name
     min_size = MIN_BYTES[name]
@@ -44,7 +106,7 @@ def copy_or_download(name: str, url: str) -> None:
     print(f"  ↓ downloading {name} ...")
     tmp = dest.with_suffix(".onnx.part")
     try:
-        urllib.request.urlretrieve(url, tmp)
+        download(url, tmp)
         tmp.replace(dest)
     except Exception:
         if tmp.exists():

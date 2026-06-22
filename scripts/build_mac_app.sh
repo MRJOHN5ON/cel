@@ -35,6 +35,7 @@ if [ ! -x "venv/bin/python3" ]; then
   python3 -m venv venv
 fi
 VENV_PY="$ROOT/venv/bin/python3"
+"$VENV_PY" -m pip install -q certifi
 "$VENV_PY" scripts/download_models.py
 
 # ── 2b. App icon ─────────────────────────────────────────────────────────────

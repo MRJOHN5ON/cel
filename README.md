@@ -159,6 +159,35 @@ Launch from Applications. If setup was skipped, the app will prompt you to insta
 
 Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
 
+### Build troubleshooting
+
+**`SSL: CERTIFICATE_VERIFY_FAILED` while downloading models**
+
+Fresh [python.org](https://www.python.org/downloads/macos/) installs on macOS often ship without SSL root certificates. The build stops before `dist/Cel Pro.app` exists, so a later `cp dist/Cel Pro.app ...` will fail too.
+
+Fix (pick one):
+
+1. **Easiest:** rerun `./scripts/build_mac_app.sh` — recent builds retry model downloads with **curl** when Python SSL fails (curl uses macOS system certificates).
+2. **Recommended long-term:** Finder → **Applications** → **Python 3.x** → double-click **`Install Certificates.command`**, then rerun the build.
+3. **Manual download** (if the build still fails), from the repo folder:
+   ```bash
+   mkdir -p packaging/models_cache
+   curl -L -o packaging/models_cache/isnet-general-use.onnx \
+     "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"
+   curl -L -o packaging/models_cache/u2net.onnx \
+     "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx"
+   curl -L -o packaging/models_cache/u2net_human_seg.onnx \
+     "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx"
+   curl -L -o packaging/models_cache/bria-rmbg.onnx \
+     "https://github.com/danielgatis/rembg/releases/download/v0.0.0/bria-rmbg-2.0.onnx"
+   ./scripts/build_mac_app.sh
+   ```
+   (The last file is ~1 GB — allow several minutes.)
+
+**`cp: dist/Cel Pro.app: No such file or directory`**
+
+The build did not finish — usually because model download failed (see SSL above) or an earlier step errored. Scroll up in Terminal for the first `✗` or `error`, fix that, then rerun `./scripts/build_mac_app.sh` before copying to Applications.
+
 ## Quick start (dev mode)
 
 ```bash
