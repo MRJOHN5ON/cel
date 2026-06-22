@@ -54,6 +54,9 @@ function paintColoredMask(canvas, maskImg) {
   ctx.putImageData(imageData, 0, 0)
 }
 
+const KEEP_LABEL = 1
+const REMOVE_LABEL = 0
+
 export default function SamPointPicker({
   imageUrl,
   file,
@@ -62,7 +65,7 @@ export default function SamPointPicker({
   onApply,
 }) {
   const [expanded, setExpanded] = useState(false)
-  const [pointMode, setPointMode] = useState(1)
+  const [pointMode, setPointMode] = useState(KEEP_LABEL)
   const [points, setPoints] = useState([])
   const [maskUrl, setMaskUrl] = useState(null)
   const [applying, setApplying] = useState(false)
@@ -71,6 +74,13 @@ export default function SamPointPicker({
   const imgRef = useRef(null)
   const frameRef = useRef(null)
   const maskCanvasRef = useRef(null)
+  const maskUrlRef = useRef(null)
+  const previewAbortRef = useRef(null)
+  const previewDebounceRef = useRef(null)
+
+  const hasKeepPoint = points.some((p) => p.label === KEEP_LABEL)
+  const hasRemovePoint = points.some((p) => p.label === REMOVE_LABEL)
+  const invalidRemoveOnlySelection = hasRemovePoint && !hasKeepPoint
   const maskUrlRef = useRef(null)
   const previewAbortRef = useRef(null)
   const previewDebounceRef = useRef(null)
@@ -131,18 +141,27 @@ export default function SamPointPicker({
   useEffect(() => {
     if (!expanded || !file || points.length === 0) {
       revokeMask()
+      setError(null)
+      return undefined
+    }
+
+    if (invalidRemoveOnlySelection) {
+      revokeMask()
+      setError('Please add at least one Keep point before using Remove points.')
+      setPreviewing(false)
       return undefined
     }
 
     if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current)
     previewDebounceRef.current = setTimeout(() => {
+      setError(null)
       fetchLiveMask(points)
     }, 400)
 
     return () => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current)
     }
-  }, [expanded, file, points, fetchLiveMask, revokeMask])
+  }, [expanded, file, points, fetchLiveMask, revokeMask, invalidRemoveOnlySelection])
 
   useEffect(() => {
     const canvas = maskCanvasRef.current
@@ -164,7 +183,11 @@ export default function SamPointPicker({
 
     const data = clientToImageCoords(e.clientX, e.clientY, frame, img)
     setPoints((prev) => [...prev, { data, label: pointMode }])
-    setError(null)
+    if (pointMode === REMOVE_LABEL && !hasKeepPoint) {
+      setError('Add a Keep point before you add Remove points.')
+    } else {
+      setError(null)
+    }
   }
 
   const clearPoints = () => {
@@ -182,6 +205,10 @@ export default function SamPointPicker({
 
   const applySegment = async () => {
     if (!file || points.length === 0 || applying) return
+    if (invalidRemoveOnlySelection) {
+      setError('Please add a Keep point before applying Remove points.')
+      return
+    }
 
     previewAbortRef.current?.abort()
     setApplying(true)
@@ -238,7 +265,7 @@ export default function SamPointPicker({
           <h3 className="sam-picker__title">Smart Select</h3>
           <p className="sam-picker__hint">
             Click what to keep (green dots) and what to remove (red dots).
-            Green tint = kept, red tint = removed. First use downloads a one-time ~375 MB model.
+            Add at least one Keep point before using Remove points. First use downloads a one-time ~375 MB model.
           </p>
         </div>
         <button
@@ -257,17 +284,19 @@ export default function SamPointPicker({
       <div className="sam-picker__tools segment-control">
         <button
           type="button"
-          className={`view-tab ${pointMode === 1 ? 'view-tab--active' : ''}`}
-          onClick={() => setPointMode(1)}
+          className={`view-tab ${pointMode === KEEP_LABEL ? 'view-tab--active view-tab--keep' : ''}`}
+          onClick={() => setPointMode(KEEP_LABEL)}
           disabled={applying}
+          title="Mark points to keep"
         >
           Keep
         </button>
         <button
           type="button"
-          className={`view-tab ${pointMode === 0 ? 'view-tab--active' : ''}`}
-          onClick={() => setPointMode(0)}
+          className={`view-tab ${pointMode === REMOVE_LABEL ? 'view-tab--active view-tab--remove' : ''}`}
+          onClick={() => setPointMode(REMOVE_LABEL)}
           disabled={applying}
+          title="Mark points to remove"
         >
           Remove
         </button>
@@ -321,7 +350,7 @@ export default function SamPointPicker({
               return (
                 <span
                   key={`${p.data[0]}-${p.data[1]}-${i}`}
-                  className={`sam-picker__point sam-picker__point--${p.label === 1 ? 'fg' : 'bg'}`}
+                  className={`sam-picker__point sam-picker__point--${p.label === KEEP_LABEL ? 'fg' : 'bg'}`}
                   style={{ left: `${left}%`, top: `${top}%` }}
                 />
               )
@@ -337,7 +366,7 @@ export default function SamPointPicker({
           type="button"
           className="btn btn--primary"
           onClick={applySegment}
-          disabled={disabled || applying || points.length === 0}
+          disabled={disabled || applying || points.length === 0 || invalidRemoveOnlySelection}
         >
           <IconWand size={15} />
           {applying ? 'Building cutout…' : 'Use this selection'}
