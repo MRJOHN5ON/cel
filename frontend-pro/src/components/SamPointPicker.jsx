@@ -81,9 +81,6 @@ export default function SamPointPicker({
   const hasKeepPoint = points.some((p) => p.label === KEEP_LABEL)
   const hasRemovePoint = points.some((p) => p.label === REMOVE_LABEL)
   const invalidRemoveOnlySelection = hasRemovePoint && !hasKeepPoint
-  const maskUrlRef = useRef(null)
-  const previewAbortRef = useRef(null)
-  const previewDebounceRef = useRef(null)
 
   const revokeMask = useCallback(() => {
     if (maskUrlRef.current) {
