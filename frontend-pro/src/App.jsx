@@ -545,7 +545,7 @@ export default function App() {
           <div className="offline-banner" role="alert">
             <IconError size={16} />
             <p>
-              Can&apos;t reach the server. Restart Cel Pro or run <code>./start-pro.sh</code> in dev mode.
+              Can&apos;t reach the server. Restart Cel Pro or run <code>./start.sh</code> in dev mode.
             </p>
           </div>
         )}

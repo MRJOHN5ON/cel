@@ -36,6 +36,14 @@ BACKEND_PID=$!
 
 sleep 1
 
+echo "Waiting for backend..."
+for _ in $(seq 1 30); do
+  if curl -sf "http://127.0.0.1:${BACKEND_PORT}/api/health" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.5
+done
+
 echo "Starting Cel Pro frontend on http://127.0.0.1:${FRONTEND_PORT}"
 (cd frontend-pro && npm run dev -- --port "$FRONTEND_PORT" --host 127.0.0.1) &
 FRONTEND_PID=$!

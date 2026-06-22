@@ -30,7 +30,8 @@ fi
 
 # ── 2. Models ────────────────────────────────────────────────────────────────
 echo ""
-echo "→ Preparing models (this may take a while on first build)..."
+echo ""
+echo "→ Preparing models (first build downloads ~1.5 GB; cached after that)..."
 if [ ! -x "venv/bin/python3" ]; then
   python3 -m venv venv
 fi
@@ -115,7 +116,9 @@ echo ""
 echo "  Before first launch on any Mac:"
 echo "    1. Install Python 3.10+ from python.org"
 echo "    2. Double-click: dist/Install Cel Pro.command"
-echo "    3. Open Cel Pro.app"
+echo "    3. Right-click Cel Pro.app → Open (unsigned build)"
+echo ""
+echo "  Build failed? See README → If the build fails"
 echo ""
 echo "  Logs: ~/Library/Logs/Cel Pro/cel-pro.log"
 echo "══════════════════════════════════════════"
