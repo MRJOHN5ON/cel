@@ -304,12 +304,8 @@ export default function MaskEditor({
       }
 
       // Loupe shows image at MAGNIFIER_PIXEL_RATIO×; scale brush from image space.
-      // Cap radius so the ring does not fill the circle when viewScale is very low.
       const brushRadiusImg = brushSize / viewScale
-      const brushRadiusMag = Math.min(
-        brushRadiusImg * MAGNIFIER_PIXEL_RATIO,
-        MAGNIFIER_MAX_BRUSH_RADIUS,
-      )
+      const brushRadiusMag = brushRadiusImg * MAGNIFIER_PIXEL_RATIO
       const activeTool = toolRef.current
 
       ctx.beginPath()
