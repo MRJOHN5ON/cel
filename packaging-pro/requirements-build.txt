@@ -1,0 +1,4 @@
+-r ../backend/requirements.txt
+-r ../packaging/requirements.txt
+certifi
+pyinstaller>=6.10

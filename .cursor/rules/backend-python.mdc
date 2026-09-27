@@ -1,0 +1,16 @@
+---
+description: Conventions for the FastAPI + rembg backend
+globs: backend/**/*.py,packaging-pro/**/*.py
+alwaysApply: false
+---
+
+# Backend (Python / FastAPI)
+
+- Target Python 3.10+. Keep `from __future__ import annotations` and full type hints on public functions.
+- Routes in `main.py` stay thin: validate with `_validate_upload`, call into `remover.py`, translate errors. `ValueError` → 400 with its message; anything else → 500 with a generic user-facing message (never leak tracebacks).
+- Image/ML logic belongs in `remover.py`. Import `rembg` (and `numpy`) inside the function that needs it, never at module top level.
+- `remover.py` functions return `(bytes, metadata_dict)`. When adding a metadata key, check whether `App.jsx` reads it.
+- Everything is local and offline. No new network calls, telemetry, or cloud APIs.
+- New dependencies go in `backend/requirements.txt`, then run `scripts/build_release.sh --relock` so the release build picks them up. Anything with native code or data files may need a `collect_all` entry in `packaging-pro/CelPro.spec`; see "Release packaging" in `AGENTS.md`.
+- Add or update a test in `backend/tests/` for any behaviour change. Tests must not load real models; use the `fake_rembg` fixture in `conftest.py`.
+- Verify: `venv/bin/python -m pytest backend/tests`

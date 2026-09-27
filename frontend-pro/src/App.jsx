@@ -685,6 +685,7 @@ export default function App() {
                       {models.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name}
+                          {m.downloaded === false ? ` (${(m.download_size_mb / 1024).toFixed(1)} GB download on first use)` : ''}
                         </option>
                       ))}
                     </select>

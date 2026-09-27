@@ -68,7 +68,7 @@ def start_remove_job(
     trim: bool,
     runner: Callable[..., tuple[bytes, dict[str, Any]]],
 ) -> str:
-    from remover import get_source_info
+    from remover import MODELS, ensure_model_downloaded, get_source_info
 
     _cleanup_old_jobs()
     job_id = str(uuid.uuid4())
@@ -102,6 +102,19 @@ def start_remove_job(
                 alpha_matting=alpha_matting,
                 force_alpha_matting=force_alpha_matting,
             )
+
+            def on_download(pct: int, done: int, total: int) -> None:
+                name = MODELS.get(model, {}).get("name", model)
+                _update(
+                    job_id,
+                    progress=pct,
+                    message=(
+                        f"Downloading {name} model (one-time) — "
+                        f"{done // 1_000_000} of {total // 1_000_000} MB"
+                    ),
+                )
+
+            ensure_model_downloaded(model, on_download)
 
             _update(job_id, progress=12, message="Preparing model…")
 

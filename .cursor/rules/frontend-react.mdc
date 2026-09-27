@@ -1,0 +1,16 @@
+---
+description: Conventions for the Cel Pro React/Vite frontend
+globs: frontend-pro/**/*.js,frontend-pro/**/*.jsx,frontend-pro/**/*.css
+alwaysApply: false
+---
+
+# Frontend (frontend-pro, React 18 + Vite)
+
+- `frontend-pro/` is the live UI. `frontend/` is legacy; don't change it unless asked.
+- Plain JSX with function components and hooks. No TypeScript, no new UI/state libraries without asking.
+- Style matches the existing code: no semicolons, single quotes, 2-space indent, trailing commas.
+- Pure logic (math, formatting, pixel/brush operations, geometry) goes in `src/utils/` as exported functions with a Vitest test beside it (`*.test.js`). Components should call these helpers rather than inline the math. That keeps canvas bugs like the magnifier radius testable.
+- In `MaskEditor.jsx`, values read inside pointer/animation callbacks come from refs (`toolRef`, `showRemovedRef`, …). Don't swap them for state, and don't declare the same ref twice.
+- API calls use relative `/api/...` URLs (Vite proxies in dev; FastAPI serves the build in the app).
+- Saving must go through `saveBlob` in `utils/format.js` so the native macOS save panel works in the packaged app.
+- Verify: `(cd frontend-pro && npm test && npm run build)`

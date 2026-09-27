@@ -1,0 +1,50 @@
+name: Release
+
+# Push a tag like v1.2.0 (or run manually) to build the DMG and attach it to a draft release.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the leading v, e.g. 1.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend-pro/package-lock.json
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          V="${INPUT_VERSION:-$TAG}"
+          echo "value=${V#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache bundled models
+        uses: actions/cache@v6
+        with:
+          path: packaging/models_cache
+          key: models-${{ hashFiles('scripts/download_models.py') }}
+
+      - name: Build and publish draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: scripts/build_release.sh "$VERSION" --publish
