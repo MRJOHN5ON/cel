@@ -32,24 +32,44 @@ def pick_port() -> int:
     raise SystemExit("Could not bind a local port for Cel Pro")
 
 
+APP_SUPPORT = Path.home() / "Library" / "Application Support" / APP_NAME
+
+
+def link_bundled_models(bundled_dir: Path, user_dir: Path) -> None:
+    """Expose read-only bundled models in the writable dir rembg downloads into."""
+    user_dir.mkdir(parents=True, exist_ok=True)
+    for model in bundled_dir.glob("*.onnx"):
+        link = user_dir / model.name
+        if link.is_symlink() and link.resolve() != model.resolve():
+            link.unlink()
+        if not link.exists():
+            link.symlink_to(model)
+
+
 def configure_environment(root: Path) -> int:
     backend_dir = root / "backend"
     models_dir = root / "models"
     frontend_dir = root / "frontend" / "dist"
+    frozen = getattr(sys, "frozen", False)
 
-    if not backend_dir.is_dir():
+    if not frozen and not backend_dir.is_dir():
         raise SystemExit(f"Missing backend directory: {backend_dir}")
     if not frontend_dir.is_dir():
         raise SystemExit(f"Missing frontend build: {frontend_dir}")
     if not models_dir.is_dir():
         raise SystemExit(f"Missing models directory: {models_dir}")
 
+    user_models = APP_SUPPORT / "models"
+    link_bundled_models(models_dir, user_models)
+
     os.environ["CEL_PACKAGED"] = "1"
     os.environ["CEL_FRONTEND_DIR"] = str(frontend_dir)
-    os.environ["U2NET_HOME"] = str(models_dir)
+    os.environ["U2NET_HOME"] = str(user_models)
+    os.environ.setdefault("NUMBA_CACHE_DIR", str(APP_SUPPORT / "numba-cache"))
 
-    sys.path.insert(0, str(backend_dir))
-    os.chdir(backend_dir)
+    if not frozen:
+        sys.path.insert(0, str(backend_dir))
+        os.chdir(backend_dir)
     sys.path.insert(0, str(root))
 
     return pick_port()
@@ -107,9 +127,12 @@ def wait_for_server(port: int, timeout: float = 45.0) -> None:
 def run_server(port: int) -> None:
     import uvicorn
 
+    # Imported here, after configure_environment, because main reads env vars at import.
+    from main import app
+
     try:
         config = uvicorn.Config(
-            "main:app",
+            app,
             host="127.0.0.1",
             port=port,
             log_level="info",
@@ -142,7 +165,18 @@ def get_window_geometry() -> tuple[int, int, int | None, int | None]:
         return 1120, 780, None, None
 
 
+def redirect_output_to_log() -> None:
+    """A windowed app has no terminal; keep output where the README says it is."""
+    log_dir = Path.home() / "Library" / "Logs" / APP_NAME
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log = open(log_dir / "cel-pro.log", "a", buffering=1, encoding="utf-8")
+    sys.stdout = sys.stderr = log
+
+
 def main() -> None:
+    if getattr(sys, "frozen", False):
+        redirect_output_to_log()
+
     if sys.platform == "darwin":
         sys.argv[0] = APP_NAME
 

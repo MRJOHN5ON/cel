@@ -11,22 +11,20 @@ import {
   IconStartOver,
 } from './Icons'
 import './MaskEditor.css'
-
-const TOOLS = { erase: 'erase', restore: 'restore', pan: 'pan' }
+import {
+  TOOLS,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  clampZoom,
+  MAGNIFIER_SIZE,
+  magnifierGeometry,
+  paintBrush,
+} from '../utils/brush'
 
 const MAX_HISTORY = 20
-const MIN_ZOOM = 0.1
-const MAX_ZOOM = 8
 const ZOOM_SLIDER_MIN = Math.round(MIN_ZOOM * 100)
 const ZOOM_SLIDER_MAX = Math.round(MAX_ZOOM * 100)
 
-function clampZoom(value) {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
-}
-const MAGNIFIER_SIZE = 128
-const MAGNIFIER_PIXEL_RATIO = 4
-// Cap ring size so it stays readable when zoomed far out (low viewScale).
-const MAGNIFIER_MAX_BRUSH_RADIUS = (MAGNIFIER_SIZE / 2) * 0.45
 const MAGNIFIER_MAX_BRUSH_SIZE = 5
 const MAGNIFIER_SHOW_BELOW_SCALE = 0.88
 const MAGNIFIER_HIDE_ABOVE_SCALE = 0.94
@@ -46,53 +44,6 @@ function cloneImageData(data) {
     data.width,
     data.height,
   )
-}
-
-function brushFalloff(dist, radius, hardness) {
-  if (dist >= radius) return 0
-  const inner = radius * hardness
-  if (dist <= inner) return 1
-  return 1 - (dist - inner) / (radius - inner)
-}
-
-function paintBrush({ workData, originalData, cx, cy, radius, hardness, tool }) {
-  const { width, height, data } = workData
-  const orig = originalData.data
-  const r = Math.ceil(radius)
-  const x0 = Math.max(0, Math.floor(cx - r))
-  const y0 = Math.max(0, Math.floor(cy - r))
-  const x1 = Math.min(width - 1, Math.ceil(cx + r))
-  const y1 = Math.min(height - 1, Math.ceil(cy + r))
-
-  for (let y = y0; y <= y1; y += 1) {
-    for (let x = x0; x <= x1; x += 1) {
-      const dx = x - cx
-      const dy = y - cy
-      const dist = Math.hypot(dx, dy)
-      const strength = brushFalloff(dist, radius, hardness)
-      if (strength <= 0) continue
-
-      const idx = (y * width + x) * 4
-
-      if (tool === TOOLS.erase) {
-        const prevAlpha = data[idx + 3]
-        const nextAlpha = Math.round(prevAlpha * (1 - strength))
-        if (prevAlpha > 0) {
-          const scale = nextAlpha / prevAlpha
-          data[idx] = Math.round(data[idx] * scale)
-          data[idx + 1] = Math.round(data[idx + 1] * scale)
-          data[idx + 2] = Math.round(data[idx + 2] * scale)
-        }
-        data[idx + 3] = nextAlpha
-      } else if (tool === TOOLS.restore) {
-        const blend = strength
-        data[idx] = Math.round(data[idx] * (1 - blend) + orig[idx] * blend)
-        data[idx + 1] = Math.round(data[idx + 1] * (1 - blend) + orig[idx + 1] * blend)
-        data[idx + 2] = Math.round(data[idx + 2] * (1 - blend) + orig[idx + 2] * blend)
-        data[idx + 3] = Math.round(data[idx + 3] + (255 - data[idx + 3]) * blend)
-      }
-    }
-  }
 }
 
 function getCheckerColors() {
@@ -276,16 +227,11 @@ export default function MaskEditor({
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       }
 
-      const brushRadiusImg = brushSize / viewScale
-      const magnifierZoom = Math.max(
-        1,
-        Math.min(
-          MAGNIFIER_PIXEL_RATIO,
-          MAGNIFIER_MAX_BRUSH_RADIUS / brushRadiusImg,
-        ),
+      const { brushRadius: brushRadiusMag, srcDim } = magnifierGeometry(
+        brushSize,
+        viewScale,
+        size,
       )
-      const brushRadiusMag = brushRadiusImg * magnifierZoom
-      const srcDim = size / magnifierZoom
       const sx = imgX - srcDim / 2
       const sy = imgY - srcDim / 2
 

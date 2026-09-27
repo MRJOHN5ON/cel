@@ -7,6 +7,7 @@ import os
 import zipfile
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,10 +18,12 @@ from remover import (
     ALPHA_MATTING_MAX_PIXELS,
     ALPHA_MATTING_MAX_SIDE_PX,
     DEFAULT_MODEL,
+    MODEL_DOWNLOADS,
     MODELS,
     SAM_MODEL,
     get_source_info,
     is_model_cached,
+    is_model_downloaded,
     png_to_jpg,
     preload_session,
     refine_with_mask,
@@ -67,6 +70,8 @@ async def startup() -> None:
     import asyncio
 
     async def warm_model() -> None:
+        if not is_model_downloaded(DEFAULT_MODEL):
+            return
         try:
             await asyncio.to_thread(preload_session, DEFAULT_MODEL)
         except Exception:
@@ -99,7 +104,14 @@ def list_models() -> dict:
     }
     return {
         "models": [
-            {"id": mid, **meta, "default": mid == DEFAULT_MODEL, "interactive": False}
+            {
+                "id": mid,
+                **meta,
+                "default": mid == DEFAULT_MODEL,
+                "interactive": False,
+                "downloaded": is_model_downloaded(mid),
+                "download_size_mb": MODEL_DOWNLOADS.get(mid, {}).get("size_mb", 0),
+            }
             for mid, meta in MODELS.items()
         ],
         "segment_models": [sam_meta],
@@ -177,13 +189,14 @@ async def remove_bg(
         content=body,
         media_type=media_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": _content_disposition(filename),
             "X-Source-Width": str(metadata["source_width"]),
             "X-Source-Height": str(metadata["source_height"]),
             "X-Output-Width": str(metadata["output_width"]),
             "X-Output-Height": str(metadata["output_height"]),
             "X-Output-Size": str(metadata["file_size"]),
-            "X-Warnings": "|".join(metadata["warnings"]),
+            # Headers must be latin-1; warnings contain "×" and "—".
+            "X-Warnings": quote("|".join(metadata["warnings"])),
             "X-Trimmed": str(metadata["trimmed"]).lower(),
         },
     )
@@ -448,6 +461,11 @@ def _swap_ext(filename: str, new_ext: str) -> str:
     else:
         base = filename
     return f"{base}_BGREMOVED{new_ext}"
+
+
+def _content_disposition(filename: str) -> str:
+    ascii_name = filename.encode("ascii", "replace").decode("ascii").replace('"', "")
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
 
 
 if FRONTEND_DIR.is_dir():

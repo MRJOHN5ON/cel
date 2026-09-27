@@ -18,73 +18,43 @@
 
 ---
 
-## Get Cel Pro on your Mac
+## Download
 
-There is no pre-built download yet — you build the app once on your Mac (~5–15 minutes the first time, mostly model downloads). After that, Cel Pro runs fully offline.
+1. Download **Cel-Pro-…-arm64.dmg** from the [latest release](https://github.com/MRJOHN5ON/cel/releases/latest).
+2. Open the DMG and drag **Cel Pro** into **Applications**.
+3. Open Cel Pro. The first time, macOS says it can't verify the developer (the app isn't signed with a paid Apple Developer certificate). Go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to the Cel Pro message, and confirm. You only do this once.
 
-**You need:**
+**You need:** an Apple Silicon Mac (M1 or newer) on macOS 12.3 or later. Nothing else: Python and everything the app needs are inside it.
 
-- macOS 12+ (Apple Silicon recommended)
-- [Python 3.10+](https://www.python.org/downloads/macos/) from **python.org** (not Xcode Command Line Tools alone)
-- Node.js 18+ (only for the build step)
+The first time you use **BRIA RMBG 2.0** (the default, best-quality model) Cel Pro downloads it once, about 1 GB, with progress shown in the app. The other three models are included, and after that everything works offline.
 
-### 1. Install Python
+Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
 
-Download and run the installer from [python.org/downloads/macos](https://www.python.org/downloads/macos/). Then confirm:
+### Troubleshooting
+
+**"Cel Pro is damaged and can't be opened"**: macOS sometimes says this about downloaded unsigned apps. Run this once in Terminal, then open the app again:
 
 ```bash
-python3 --version   # should show 3.10 or newer
+xattr -dr com.apple.quarantine "/Applications/Cel Pro.app"
 ```
 
-### 2. Build the app
+**The BRIA download fails**: check your internet connection and press **Remove Background** again, or pick another model from the dropdown in the meantime. Partial downloads are discarded, never used.
+
+**Intel Mac**: the download is Apple Silicon only. Use [Dev mode](#dev-mode) instead.
+
+---
+
+## Build the app yourself
 
 ```bash
 git clone https://github.com/MRJOHN5ON/cel.git
 cd cel
-chmod +x scripts/build_mac_app.sh
-./scripts/build_mac_app.sh
-cp -R "dist/Cel Pro.app" /Applications/
+scripts/build_release.sh 1.2.0
 ```
 
-First build downloads ~1.5 GB of ML models into `packaging/models_cache/` (cached for future builds).
+Needs an Apple Silicon Mac with [uv](https://docs.astral.sh/uv/getting-started/installation/), Node.js 18+, and the Xcode Command Line Tools (`xcode-select --install`). The script fetches its own Python, downloads the bundled models once (~530 MB, cached in `packaging/models_cache/`), and writes `dist/release/Cel-Pro-1.2.0-arm64.dmg`.
 
-### 3. Install Python packages (one time)
-
-Double-click **`dist/Install Cel Pro.command`**, or run:
-
-```bash
-./scripts/setup_cel_pro_deps.sh
-```
-
-This installs rembg, FastAPI, and other runtime deps into `~/Library/Application Support/Cel Pro/venv` (~few hundred MB, needs internet once).
-
-### 4. Open Cel Pro
-
-Launch from Applications. The first time, right-click → **Open** (the app is unsigned). If setup was skipped, Cel Pro will prompt you to run the installer script.
-
-Logs: `~/Library/Logs/Cel Pro/cel-pro.log`
-
----
-
-## If the build fails
-
-**`SSL: CERTIFICATE_VERIFY_FAILED` while downloading models**
-
-Fresh python.org installs on macOS often lack SSL root certificates. The build stops before `dist/Cel Pro.app` exists.
-
-Fix (pick one):
-
-1. **Easiest:** rerun `./scripts/build_mac_app.sh` — the download script retries with **curl** (uses macOS system certificates) when Python SSL fails.
-2. **Permanent fix:** Finder → **Applications** → **Python 3.x** → double-click **`Install Certificates.command`**, then rebuild.
-3. **Manual download** — see [scripts/download_models.py](scripts/download_models.py) for URLs, place files in `packaging/models_cache/`, then rerun the build.
-
-**`cp: dist/Cel Pro.app: No such file or directory`**
-
-The build did not finish. Scroll up in Terminal for the first error (usually model download), fix it, then rerun `./scripts/build_mac_app.sh`.
-
-**App won't open / "damaged" warning**
-
-Right-click **Cel Pro.app** → **Open** the first time. This is normal for unsigned local builds.
+Publishing a release: push a tag like `v1.2.0` and the [Release workflow](.github/workflows/release.yml) builds the DMG on GitHub and attaches it to a draft release. Review the draft, then publish it. Or build locally and run `scripts/build_release.sh 1.2.0 --publish`.
 
 ---
 
@@ -135,9 +105,15 @@ chmod +x start.sh
 ./start.sh
 ```
 
-Open **http://127.0.0.1:5173**. Dev mode uses a local `venv/` in the repo (separate from the Application Support venv used by the `.app`).
+Open **http://127.0.0.1:5173**. Dev mode needs Python 3.10+ and uses a local `venv/` in the repo. Models download to `~/.u2net` on first use.
 
-Pre-fetch all models: `python scripts/download_models.py` (~1.5 GB).
+Run the tests:
+
+```bash
+venv/bin/python -m pip install -r backend/requirements-dev.txt
+venv/bin/python -m pytest backend/tests
+(cd frontend-pro && npm test)
+```
 
 ---
 
@@ -160,8 +136,8 @@ BRIA RMBG 2.0 is [non-commercial only](THIRD_PARTY_NOTICES.md).
 cel/
 ├── backend/          FastAPI + rembg
 ├── frontend-pro/     Cel Pro UI
-├── packaging-pro/    Cel Pro.app launcher
-├── scripts/          build_mac_app.sh, setup_cel_pro_deps.sh, download_models.py
+├── packaging-pro/    Cel Pro.app launcher + PyInstaller spec
+├── scripts/          build_release.sh, download_models.py
 └── start.sh          Dev mode
 ```
 

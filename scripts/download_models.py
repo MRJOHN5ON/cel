@@ -117,17 +117,29 @@ def copy_or_download(name: str, url: str) -> None:
 
 
 def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--skip",
+        action="append",
+        default=[],
+        metavar="FILE",
+        help="model file to skip, e.g. bria-rmbg.onnx (repeatable)",
+    )
+    wanted = {name: url for name, url in MODELS.items() if name not in parser.parse_args().skip}
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Model cache: {OUT_DIR}")
 
-    for name, url in MODELS.items():
+    for name, url in wanted.items():
         try:
             copy_or_download(name, url)
         except Exception as exc:
             print(f"  ✗ failed to fetch {name}: {exc}", file=sys.stderr)
             return 1
 
-    total_mb = sum((OUT_DIR / name).stat().st_size for name in MODELS) // 1_000_000
+    total_mb = sum((OUT_DIR / name).stat().st_size for name in wanted) // 1_000_000
     print(f"All models ready ({total_mb} MB total)")
     return 0
 

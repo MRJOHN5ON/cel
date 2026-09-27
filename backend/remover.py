@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
-from typing import Any
+import os
+import threading
+import urllib.request
+from pathlib import Path
+from typing import Any, Callable
 
 from PIL import Image
 
@@ -42,7 +47,89 @@ LOW_RES_DIMENSION_PX = 1000
 ALPHA_MATTING_MAX_PIXELS = 2_500_000
 ALPHA_MATTING_MAX_SIDE_PX = 2000
 
+# Models not shipped inside the app; fetched once into models_dir() on first use.
+MODEL_DOWNLOADS: dict[str, dict[str, Any]] = {
+    "bria-rmbg": {
+        "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/bria-rmbg-2.0.onnx",
+        # Must match rembg's BriaRmBgSession, or rembg will re-download the file.
+        "sha256": "5b486f08200f513f460da46dd701db5fbb47d79b4be4b708a19444bcd4e79958",
+        "size_mb": 1024,
+    },
+}
+
 _sessions: dict[str, Any] = {}
+_download_lock = threading.Lock()
+
+
+def models_dir() -> Path:
+    """Where rembg looks for .onnx files (same resolution rule as rembg)."""
+    default = os.path.join(os.getenv("XDG_DATA_HOME", "~"), ".u2net")
+    return Path(os.path.expanduser(os.getenv("U2NET_HOME", default)))
+
+
+def is_model_downloaded(model: str) -> bool:
+    if model not in MODEL_DOWNLOADS:
+        return True
+    return (models_dir() / f"{model}.onnx").is_file()
+
+
+def _ssl_context():
+    import ssl
+
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+def ensure_model_downloaded(
+    model: str,
+    progress_callback: Callable[[int, int, int], None] | None = None,
+) -> None:
+    """Download a MODEL_DOWNLOADS model if missing. Callback gets (pct, done, total) bytes."""
+    spec = MODEL_DOWNLOADS.get(model)
+    if spec is None or is_model_downloaded(model):
+        return
+
+    with _download_lock:
+        if is_model_downloaded(model):
+            return
+
+        dest = models_dir() / f"{model}.onnx"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_suffix(".onnx.part")
+        digest = hashlib.sha256()
+        request = urllib.request.Request(spec["url"], headers={"User-Agent": "cel-pro"})
+
+        try:
+            with urllib.request.urlopen(
+                request, context=_ssl_context(), timeout=60
+            ) as response, tmp.open("wb") as out:
+                total = int(response.headers.get("Content-Length") or 0)
+                done = 0
+                last_pct = -1
+                while chunk := response.read(1 << 20):
+                    out.write(chunk)
+                    digest.update(chunk)
+                    done += len(chunk)
+                    pct = done * 100 // total if total else 0
+                    if progress_callback and pct != last_pct:
+                        last_pct = pct
+                        progress_callback(pct, done, total)
+
+            if digest.hexdigest() != spec["sha256"]:
+                raise RuntimeError("downloaded file failed its checksum")
+            tmp.replace(dest)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not download the {MODELS[model]['name']} model. "
+                "Check your internet connection and try again, "
+                "or pick a different model."
+            ) from exc
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 def _allowed_models() -> set[str]:
@@ -142,6 +229,10 @@ def remove_background(
             height,
             pixels,
         )
+
+    if model not in _allowed_models():
+        raise ValueError(f"Unknown model: {model}")
+    ensure_model_downloaded(model)
 
     if progress_callback:
         progress_callback(18, "Loading model…")

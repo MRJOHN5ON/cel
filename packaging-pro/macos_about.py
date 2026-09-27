@@ -6,10 +6,9 @@ import os
 from pathlib import Path
 
 APP_NAME = "Cel Pro"
-APP_VERSION = "1.0.0"
 
 ABOUT_TEXT = """\
-Version 1.0.0
+Version {version}
 
 Cel Pro — local background removal with pro cutout editing.
 
@@ -40,9 +39,12 @@ def _icon_path() -> str | None:
 def show_about_panel() -> None:
     import AppKit
 
+    info = AppKit.NSBundle.mainBundle().infoDictionary() or {}
+    version = info.get("CFBundleShortVersionString") or "dev"
+
     alert = AppKit.NSAlert.alloc().init()
     alert.setMessageText_(APP_NAME)
-    alert.setInformativeText_(ABOUT_TEXT)
+    alert.setInformativeText_(ABOUT_TEXT.format(version=version))
     alert.setAlertStyle_(AppKit.NSInformationalAlertStyle)
 
     icon_file = _icon_path()
